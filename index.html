@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RQN5VLK213"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-RQN5VLK213');
+  </script>
+  <meta charset="UTF-8" />
+  <title>JO Parameter Database</title>
+  <link rel="stylesheet" href="css/menu.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="dist/css/cookieconsent.css" />
+  <link rel="stylesheet" href="dist/css/boxicons.min.css" />
+  <link rel="stylesheet" href="dist/css/font-awesome.min.css" />
+  <script src="dist/cookieconsent.umd.js"></script>
+  <script src="dist/firebase-app-compat.js"></script>
+  <script src="dist/firebase-auth-compat.js"></script>
+  <script src="js/auth_config.js"></script>
+  <script src="js/auth.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <script src="dist/cookieconsent-config.js"></script>
+  <div class="navbar-wrapper">
+    <nav>
+      <div class="navbar">
+        <i class="bx bx-menu"></i>
+        <div class="logo"><a href="https://www.loms.cz/">LOMS</a></div>
+        <div class="nav-links">
+          <div class="sidebar-logo">
+            <span class="logo-name">LOMS</span>
+            <i class="fa fa-times"></i>
+          </div>
+          <ul class="links">
+            <li>
+              <li><a href="https://www.loms.cz/jo/">Judd–Ofelt analysis v1.0</a></li>
+            </li>
+            <li><a href="https://www.loms.cz/jo-database/">JO parameter database</a></li>
+            <li>
+              <a href="https://www.loms.cz/modules/judd-ofelt-analysis/">User guide</a>
+              <i class="bx bxs-chevron-down js-arrow arrow"></i>
+              <ul class="js-sub-menu sub-menu">
+                <li><a href="https://www.loms.cz/modules/judd-ofelt-analysis/">Module documentation</a></li>
+                <li><a href="https://www.loms.cz/FAQ/">FAQ</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="https://www.loms.cz/about/">About LOMS</a>
+              <i class="bx bxs-chevron-down js-arrow arrow"></i>
+              <ul class="js-sub-menu sub-menu">
+                <li><a href="https://www.loms.cz/privacy-policy/">Privacy policy</a></li>
+                <li><a href="https://www.loms.cz/about/#TC">Terms and conditions</a></li>
+                <li><a href="https://www.loms.cz/citation/">Citation</a></li>
+                <li><a href="mailto:info@loms.cz">Contact us</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <div class="login-box">
+          <li style="list-style-type: none"><span id="login-info-user" style="color: #fff;"></span><i class="bx bx-user" style="line-height: 20px;"></i></li>
+          <div class="input-box">
+            <div id="login-signup-area">
+              <input style="display:block;width:auto;" type="text" id="email" name="email" placeholder="Email" />
+              <br/>
+              <input style="display:block;width:auto;" type="password" id="password" name="password" placeholder="Password" />
+              <br/>
+              <div id="userinfoextended" style="display:none;">
+                <input style="display:block;width:auto;" type="text" id="displayorcid" name="displayorcid" placeholder="ORCID" />
+                <br/>
+                <input style="display:block;width:auto;" type="text" id="displayname" name="displayname" placeholder="Name" />
+                <br/>
+                <input style="display:block;width:auto;" type="text" id="displayaffiliation" name="displayaffiliation" placeholder="Affiliation" />
+                <br/>
+                <div style="display:table-row;">
+                  <span style="display:table-cell; vertical-align:middle;">
+                    <input style="margin-left: -90px; margin-right: -110px;" type="checkbox" id="policyagreement" name="policyagreement" />
+                  </span>
+                  <label for="policyagreement" style="display:table-cell; width: 190px;">I agree to the <a href="https://www.loms.cz/privacy-policy/" style="color:#fff;">privacy policy</a>.</label>
+                </div>
+                <br/>
+              </div>
+              <div style="margin-left:33px;">
+                <button disabled class="login-box-button" id="login-widget-sign-in" name="signin" style="margin-bottom:10px;">Sign In</button>
+                &nbsp;&nbsp;&nbsp;
+                <button disabled class="login-box-button" id="login-widget-sign-up" name="signup" style="margin-bottom:10px;">Sign Up</button>
+                <br/>
+                <span id="login-notice"></span>
+                <a href="#" id="login-widget-password-reset">Reset password</a>
+              </div>
+            </div>
+            <div id="loggedin-area" style="margin-left:33px; display: none; color: #fff;">
+              <span id="loggedin-area-name" style="font-weight: bold;"></span>
+              <br/><br/>
+              <span id="loggedin-area-email"></span>
+              <br/><br/>
+              <span id="loggedin-area-affiliation" style="font-style: italic;"></span>
+              <br/><br/>
+              <span id="loggedin-area-orcid"></span>
+              <br/><br/>
+              <button class="login-box-button" id="login-widget-sign-out" name="signout" style="margin-bottom:10px;">Sign Out</button>&nbsp;&nbsp;&nbsp;
+              <button class="login-box-button" id="login-widget-change-profile" name="change-profile" style="margin-bottom:10px;">Edit profile</button>
+            </div>
+            <div id="loggedin-area-edit" style=" display: none; color: #fff;">
+              <input style="display:block;width:auto;" type="text" id="displayorcidedit" name="displayorcidedit" placeholder="ORCID" />
+              <br/>
+              <input style="display:block;width:auto;" type="text" id="displaynameedit" name="displaynameedit" placeholder="Name" />
+              <br/>
+              <input style="display:block;width:auto;" type="text" id="displayaffiliationedit" name="displayaffiliationedit" placeholder="Affiliation" />
+              <br/>
+              <button class="login-box-button" id="login-widget-change-profile-save" name="change-profile-save" style="margin-left:33px;margin-bottom:10px;">Save</button>&nbsp;&nbsp;&nbsp;
+              <button class="login-box-button" id="login-widget-reset-pass2" name="reset-pass2" style="margin-bottom:10px;">Reset password</button><br/>
+              <button class="login-box-button" id="login-widget-delete-account" name="delete-account" style="margin-left:33px;margin-bottom:10px;background-color:#dc3545;">Delete account</button>
+            </div>
+          </div>
+        </div><i class="bx bx-printer" style="line-height: 20px;" onclick="window.print();"></i>
+      </div>
+    </nav>
+  </div>
+  <div class="jo-db-root">
+    <div class="jo-db-tabs">
+      <button class="jo-db-tab active" data-tab="browse">Browse database</button>
+      <button class="jo-db-tab" id="tab-add-btn" data-tab="add">Add new entry</button>
+    </div>
+    <div class="jo-db-panel active" id="tab-browse">
+      <div class="jo-db-browse-layout">
+        <div class="jo-panel jo-panel-collapsible" id="filters-panel">
+          <div class="jo-panel-header">
+            <i class="fa fa-filter jo-panel-icon" aria-hidden="true"></i>
+            <span class="jo-panel-title">Filters</span>
+            <span class="jo-panel-toggle-icon">
+              <i class="fa fa-chevron-up" aria-hidden="true"></i>
+            </span>
+          </div>
+          <div class="jo-panel-body" id="jo-filters-body">
+            <div class="jo-filters-split">
+              <div class="jo-filters-left">
+                <div class="jo-db-row" style="border-bottom:0; margin-top:2px;">
+                  <div class="jo-db-col">
+                    <label for="filter-re-ion">RE ion</label>
+                    <input id="filter-re-ion" class="jo-db-input" placeholder="Any" />
+                  </div>
+                  <div class="jo-db-col">
+                    <label for="filter-host-type">Host type</label>
+                    <select id="filter-host-type" class="jo-db-select">
+                      <option value="">Any</option>
+                      <option value="glass">Glass (G)</option>
+                      <option value="glass_ceramic">Glass-ceramic (GC)</option>
+                      <option value="polycrystal">Polycrystalline (PC)</option>
+                      <option value="single_crystal">Single-crystalline (SC)</option>
+                      <option value="vapor">Vapor (V)</option>
+                      <option value="solution">Solution (S)</option>
+                      <option value="melt">Melt (M)</option>
+                      <option value="powder">Powder (P)</option>
+                      <option value="aqua">Aqueous (A)</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="jo-db-row">
+                  <div class="jo-db-col">
+                    <label for="filter-composition-text">Composition (text)</label>
+                    <input id="filter-composition-text" class="jo-db-input" placeholder="e.g. 60SiO2-20Na2O-20CaO" />
+                    <div class="jo-db-advanced-toggle" id="advanced-toggle">
+                      Advanced composition filter…
+                    </div>
+                    <div class="jo-db-advanced" id="advanced-panel">
+                      <div class="jo-db-advanced-row" id="adv-rule-input">
+                        <input class="jo-db-input" id="adv-component" placeholder="Component (e.g. SiO₂)" />
+                        <select class="jo-db-select" id="adv-op">
+                          <option value=">=">&ge;</option>
+                          <option value="<=">&le;</option>
+                          <option value="=">=</option>
+                        </select>
+                        <input class="jo-db-input" id="adv-value" type="number" step="0.0001" placeholder="Value" />
+                        <select class="jo-db-select" id="adv-unit">
+                          <option value="mol%">mol%</option>
+                          <option value="wt%">wt%</option>
+                          <option value="at%">at%</option>
+                        </select>
+                      </div>
+                      <div id="adv-rules-list" class="jo-db-adv-rules"></div>
+                      <div class="jo-db-btn-group">
+                        <button class="btn btn-secondary btn-sm" id="adv-add-rule" type="button">Add rule</button>
+                        <button class="btn btn-secondary btn-sm" id="adv-clear-rules" type="button">Clear rules</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="jo-db-row">
+                  <div class="jo-db-col">
+                    <label for="filter-pub-title">Publication title</label>
+                    <input id="filter-pub-title" class="jo-db-input" />
+                  </div>
+                  <div class="jo-db-col">
+                    <label for="filter-pub-author">Publication author</label>
+                    <input id="filter-pub-author" class="jo-db-input" />
+                  </div>
+                  <div class="jo-db-col">
+                    <label for="filter-pub-doi">Publication DOI</label>
+                    <input id="filter-pub-doi" class="jo-db-input" />
+                  </div>
+                </div>
+                <div>
+                  <label>
+                    Data availability 
+                    <i class="fa fa-question-circle tooltip-icon" data-tooltip="Search filtering to contain following information:
+                      n: Refractive index
+                      C-JO: Combinatorial JO analysis
+                      σFS: σ,F,S included
+                      MD: Magnetic dipole correction
+                      RME: Reduced matrix elements included
+                      LOMS: JO recalculated by LOMS
+                      ρ: Density">
+                    </i>
+                  </label>
+                  <div id="badge-selector">
+                    <span class="jo-db-badge" data-badge="n">n</span>
+                    <span class="jo-db-badge" data-badge="cjo">C-JO</span>
+                    <span class="jo-db-badge" data-badge="sigmafs">σFS</span>
+                    <span class="jo-db-badge" data-badge="m1">MD</span>
+                    <span class="jo-db-badge" data-badge="re">RME</span>
+                    <span class="jo-db-badge" data-badge="loms">LOMS</span>
+                    <span class="jo-db-badge" data-badge="density">ρ</span>
+                  </div>
+                </div>
+                <div style="margin-top:2em;">
+                  <button class="btn btn-primary btn-md" type="button" id="btn-search">
+                    <i class="fa fa-search"></i> 
+                    Search
+                  </button>
+                  <button class="btn btn-secondary btn-md" type="button" id="btn-reset">
+                    <i class="fa fa-undo"></i>
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div class="jo-filters-right">
+                <label for="filters-render-slot">Periodic table</label>
+                <div id="filters-render-slot" class="jo-filters-slot">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="jo-db-card">
+            <div class="jo-db-results-header">
+              <div>
+                <h2>Search results</h2>
+                <small id="jo-count">0 entries</small>
+                <div class="gif-crop">
+                  <img id="jo-results-loading" src="img/loading.gif" alt="" class="jo-loading-gif">
+                </div>
+              </div>
+              <div class="jo-db-btn-group">
+                <button class="btn btn-secondary btn-sm" type="button" id="btn-export-csv">
+                  Export as CSV &nbsp;
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+            <div class="jo-db-table-wrapper">
+              <table class="jo-db-table">
+                <thead>
+                  <tr>
+                    <th data-sort="id">ID# <span class="jo-sort"></span></th>
+                    <th data-sort="re_ion">RE <span class="jo-sort"></span></th>
+                    <th data-sort="concentration">Concentration <span class="jo-sort"></span></th>
+                    <th data-sort="composition">Composition <span class="jo-sort"></span></th>
+                    <th data-sort="host">Host <span class="jo-sort"></span></th>
+                    <th data-sort="omega2">Ω₂ <span class="jo-sort"></span></th>
+                    <th data-sort="omega4">Ω₄ <span class="jo-sort"></span></th>
+                    <th data-sort="omega6">Ω₆ <span class="jo-sort"></span></th>
+                    <th>Data availability
+                      <i class="fa fa-question-circle tooltip-icon" data-tooltip="Records may contain the following information:
+                        n: Refractive index
+                        C-JO: Combinatorial JO analysis
+                        σFS: σ,F,S included
+                        MD: Magnetic dipole correction
+                        RME: Reduced matrix elements included
+                        LOMS: JO recalculated by LOMS">
+                      </i>
+                    </th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="jo-tbody-results"></tbody>
+              </table>
+            </div>
+            <div id="jo-pager" class="jo-db-pager"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="jo-db-panel" id="tab-add">
+      <form method="POST" action="api/add_entry_file.php" enctype="multipart/form-data" id="jo-add-form-file">
+        <div class="jo-db-form-section">
+          <h2>Input format</h2>
+          <div class="jo-db-radio-group">
+            <label>
+              <input type="radio" name="input_format" value="form" checked />
+              Form
+            </label>
+            <label>
+              <input type="radio" name="input_format" value="upload" />
+              File upload
+            </label>
+          </div>
+          <div class="jo-db-row">
+            <div class="jo-db-col">
+              <div id="jo-db-upload-file-format" class="jo-db-upload-block jo-db-hidden">
+                <strong>Upload database entry file</strong>
+                <div class="jo-db-help">
+                  Upload the database entry file
+                  (JO_DAT_* format).
+                </div>
+                <input type="file" name="jo_db_file_file_format" accept=".txt,.dat,.cfg,.json" />
+              </div>
+            </div>
+            <div class="jo-db-col">
+              <div id="jo-recalc-upload-file-format" class="jo-db-upload-block jo-db-hidden">
+                <strong>Upload LOMS source file (optional)</strong>
+                <div class="jo-db-help">
+                  Upload the text / configuration file produced by the LOMS JO module
+                  (JO_DAT_* format).
+                </div>
+                <input type="file" name="jo_recalc_file_file_format" accept=".txt,.dat,.cfg,.json" />
+              </div>
+            </div>
+          </div>
+          <div class="jo-db-row jo-db-hidden" id="file-submit" style="align-items:center; gap:12px;">
+            <button id="file-submit-btn" class="btn btn-primary btn-md" type="submit">Submit entry</button>
+            <span id="file-submit-status" class="jo-db-help" style="margin-left:8px;"></span>
+          </div>
+          <input id="contributor-info-ui2" name="contributor_info_ui" value="" type="hidden" />
+          <input id="contributor-info2" name="contributor_info" value="" type="hidden" />
+          <input id="contributor-info-name2" name="contributor_info_name" value="" type="hidden" />
+          <input id="contributor-info-email2" name="contributor_info_email" value="" type="hidden" />
+          <input id="contributor-info-affiliation2" name="contributor_info_affiliation" value="" type="hidden" />
+          <input id="contributor-info-orcid2" name="contributor_info_orcid" value="" type="hidden" />
+        </div>
+      </form>
+      <div id="ui-section">
+        <form method="POST" action="api/add_entry.php" enctype="multipart/form-data" id="jo-add-form">
+          <div class="jo-db-form-section">
+            <h2>1. Publication</h2>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="pub-doi">DOI</label>
+                <div class="jo-db-input-with-status">
+                  <input id="pub-doi" name="pub_doi" class="jo-db-input" placeholder="10.xxxx/yyyy or https://doi.org/10.xxx/yy" autocomplete="off">
+                  <span class="doi-status" id="pub-doi-status" aria-hidden="true"></span>
+                </div>
+                <div class="jo-db-help">Input a DOI (or a doi.org URL) and press <b>Enter</b>.</div>
+              </div>
+              <div class="jo-db-col">
+                <label for="pub-year">Year</label>
+                <input id="pub-year" name="pub_year" class="jo-db-input" type="number" placeholder="2025" />
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="pub-title">Title</label>
+                <input id="pub-title" name="pub_title" class="jo-db-input" />
+              </div>
+              <div class="jo-db-col">
+                <label for="pub-title">Authors</label>
+                <input id="pub-authors" name="pub_authors" class="jo-db-input" />
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="pub-journal">Journal</label>
+                <input id="pub-journal" name="pub_journal" class="jo-db-input" />
+              </div>
+              <div class="jo-db-col">
+                <label for="pub-url">URL</label>
+                <input id="pub-url" name="pub_url" class="jo-db-input" placeholder="https://doi.org/...">
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label>Contributor</label>
+                <input id="contributor-info-ui" name="contributor_info_ui" class="jo-db-input" value="" disabled data-no-reset />
+                <input id="contributor-info" name="contributor_info" value="" type="hidden" />
+                <input id="contributor-info-name" name="contributor_info_name" value="" type="hidden" />
+                <input id="contributor-info-email" name="contributor_info_email" value="" type="hidden" />
+                <input id="contributor-info-affiliation" name="contributor_info_affiliation" value="" type="hidden" />
+                <input id="contributor-info-orcid" name="contributor_info_orcid" value="" type="hidden" />
+                <input id="article-metadata" name="article_metadata" value="" type="hidden" />
+              </div>
+              <div class="jo-db-col">
+                <label>&nbsp;</label>
+                <div class="jo-db-checkbox-inline">
+                  <label>
+                    <input id="is-contributor-author" name="is_contributor_author" type="checkbox" />
+                    I am an author of this work
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="jo-db-form-section">
+            <h2>2. Host medium & composition</h2>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="host-type">Host type</label>
+                <select id="host-type" name="host_type" class="jo-db-select">
+                  <option>Glass (G)</option>
+                  <option>Glass-ceramic (GC)</option>
+                  <option>Polycrystalline (PC)</option>
+                  <option>Single-crystalline (SC)</option>
+                  <option>Vapor (V)</option>
+                  <option>Solution (S)</option>
+                  <option>Melt (M)</option>
+                  <option>Powder (P)</option>
+                  <option>Aqueous (A)</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="jo-db-col">
+                <label for="sample-label">Sample label</label>
+                <input id="sample-label" name="sample_label" class="jo-db-input" placeholder="EV, Sample A…" />
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="comp-text">Composition (verbatim) <i class="fa fa-question-circle tooltip-icon" data-tooltip="Please maintain proper subscripts indicating stoichiometry using (₂) button on the right"></i></label>
+                <div class="jo-input-wrap">
+                  <textarea id="comp-text" name="composition_text" class="jo-db-textarea" placeholder="60SiO₂–20Na₂–20CaO + 0.2 mol% Er₂O₃"></textarea>
+                  <div class="jo-input-actions">
+                    <button type="button" class="jo-inbtn" id="comp-subscript-btn" title="Convert digits to subscripts">₂</button>
+                  </div>
+                </div>
+                <div class="jo-db-help">Copy composition exactly as printed in the paper.</div>
+              </div>
+            </div>
+            <label>Normalized composition (optional)</label>
+            <div class="jo-db-help">
+              Table used for advanced searching (SiO₂ ≥ 40 mol%, etc.).
+            </div>
+            <div class="jo-db-datagrid" id="comp-grid">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Component</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                    <th style="width:44px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="comp-grid-body">
+                  <tr>
+                    <td><input class="jo-db-datagrid-input" name="comp_component[]" value="SiO₂" /></td>
+                    <td><input class="jo-db-datagrid-input" name="comp_value[]" value="100" /></td>
+                    <td>
+                      <select class="jo-db-datagrid-input" name="comp_unit[]">
+                        <option value="mol%">mol%</option>
+                        <option value="wt%">wt%</option>
+                        <option value="at%">at%</option>
+                      </select>
+                    </td>
+                    <td class="jo-db-datagrid-actions">
+                      <button type="button" class="btn btn-secondary btn-sm jo-row-remove" title="Remove row">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="jo-db-btn-group" style="margin-top:6px;">
+              <button id="comp-add-row" class="btn btn-secondary btn-sm" type="button">
+                <i class="fa fa-plus"></i> 
+                Add row
+              </button>
+            </div>
+          </div>
+          <div class="jo-db-form-section">
+            <h2>3. Dopant & JO parameters</h2>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="re-ion">RE ion</label>
+                <div class="jo-db-row">
+                  <input id="re-ion" name="re_ion" class="jo-db-input" />
+                </div>
+                <div class="jo-db-row">
+                  <label>
+                    <input id="has-range-re" name="has_range_re" type="checkbox" class="jo-db-extra-toggle" />
+                    Concentration indicated as range
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <label for="re-conc">Concentration</label>
+                <div class="jo-db-row">
+                  <div class="jo-db-col">
+                    <input id="re-conc" name="re_conc_value" class="jo-db-input" type="number" step="0.0001" placeholder="0.2" />
+                  </div>
+                  <div class="jo-db-col">
+                    <select id="re-conc-unit" name="re_conc_unit" class="jo-db-select">
+                      <option>mol%</option>
+                      <option>wt%</option>
+                      <option>at%</option>
+                      <option>ions/cm³</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="jo-db-row" style="margin-bottom:0;">
+                  <div class="jo-db-col">
+                    <input id="re-conc-upper" name="re_conc_value_upper" class="jo-db-input" type="number" step="0.0001" placeholder="0.4" />
+                  </div>
+                  <div class="jo-db-col">
+                    <input id="re-conc-note" name="re_conc_value_note" class="jo-db-input"
+                      placeholder="Note for concentration">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label>Ω₂ (10⁻²⁰ cm²)</label>
+                <input id="omega2" name="omega2" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+              <div class="jo-db-col">
+                <label>Ω₄ (10⁻²⁰ cm²)</label>
+                <input id="omega4" name="omega4" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+              <div class="jo-db-col">
+                <label>Ω₆ (10⁻²⁰ cm²)</label>
+                <input id="omega6" name="omega6" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <label>
+                <input id="has-omega-error" name="has_omega_error" type="checkbox" class="jo-db-extra-toggle" />
+                Include Ω₂₋₆ errors
+              </label>
+            </div>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label>σ(Ω₂) (10⁻²⁰ cm²)</label>
+                <input id="omega2-error" name="omega2_error" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+              <div class="jo-db-col">
+                <label>σ(Ω₄) (10⁻²⁰ cm²)</label>
+                <input id="omega4-error" name="omega4_error" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+              <div class="jo-db-col">
+                <label>σ(Ω₆) (10⁻²⁰ cm²)</label>
+                <input id="omega6-error" name="omega6_error" class="jo-db-input" type="number" step="0.0001" />
+              </div>
+            </div>
+          </div>
+          <div class="jo-db-form-section">
+            <h2>
+              4. Additional data&nbsp;&nbsp;
+              <i class="fa fa-question-circle tooltip-icon" data-tooltip="Indicate data availability:
+                ✕: Data unavailable
+                ?: Availability unknown
+                ✓: Data available">
+              </i>
+            </h2>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>Refractive index</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="refractive_index_option" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="refractive_index_option" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="refractive_index_option" value="single-value" />
+                    <i class="fa fa-check"></i> (Single value)
+                  </label>
+                  <label>
+                    <input type="radio" name="refractive_index_option" value="dispersion-relation" />
+                    <i class="fa fa-check"></i> (Dispersion relation)
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="refractive-index-note" name="refractive_index_note" class="jo-db-input" placeholder="Value/note for refractive index">
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>Combinatorial JO analysis</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="combinatorial_jo_option" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="combinatorial_jo_option" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="combinatorial_jo_option" value="yes" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="combinatorial-jo-note" name="combinatorial_jo_note" class="jo-db-input"
+                  placeholder="Note for combinatorial JO analysis">
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>σ,F,S included?</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="sigma_f_s_option" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="sigma_f_s_option" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="sigma_f_s_option" value="yes" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="sigma-f-s-note" name="sigma_f_s_note" class="jo-db-input" placeholder="Values/note for σ,F,S">
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>Magnetic dipole correction</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="mag_dipole_option" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="mag_dipole_option" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="mag_dipole_option" value="yes" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="mag-dipole-note" name="mag_dipole_note" class="jo-db-input" placeholder="Note for magnetic dipole correction" />
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>Reduced elements included</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="reduced_element_option" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="reduced_element_option" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="reduced_element_option" value="yes" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="reduced-element-note" name="reduced_element_note" class="jo-db-input" placeholder="Note for reduced elements" />
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>Density</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="has_density" value="no" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="has_density" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="has_density" value="yes" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="density-gcm3" name="density_g_cm3" class="jo-db-input" placeholder="Density (g/cm³)">
+              </div>
+            </div>
+            <div class="jo-db-row" style="align-items: center;">
+              <div class="jo-db-col">
+                <label>JO recalculated by LOMS</label>
+              </div>
+              <div class="jo-db-col">
+                <div class="jo-db-radio-group">
+                  <label>
+                    <input type="radio" name="jo_source" value="original" />
+                    <i class="fa fa-times"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="jo_source" value="unknown" checked />
+                    <i class="fa fa-question"></i>
+                  </label>
+                  <label>
+                    <input type="radio" name="jo_source" value="recalc" />
+                    <i class="fa fa-check"></i>
+                  </label>
+                </div>
+              </div>
+              <div class="jo-db-col">
+                <input id="jo-source-note" name="jo_source_note" class="jo-db-input" placeholder="Note for JO source" />
+              </div>
+            </div>
+            <div class="jo-db-row">
+              <div id="jo-recalc-upload" class="jo-db-upload-block jo-db-hidden">
+                <strong>Upload LOMS source file</strong>
+                <div class="jo-db-help">
+                  Upload the text / configuration file produced by the LOMS JO module
+                  (JO_DAT_* format).
+                </div>
+                <input type="file" name="jo_recalc_file" accept=".txt,.dat,.cfg,.json" />
+              </div>
+            </div>
+          </div>
+          <div class="jo-db-form-section">
+            <h2>5. Notes & submit</h2>
+            <div class="jo-db-row">
+              <div class="jo-db-col">
+                <label for="notes">Notes (optional)</label>
+                <textarea id="notes" name="extra_notes" class="jo-db-textarea" placeholder="Table/Figure numbers, uncertainties, comments…"></textarea>
+              </div>
+            </div>
+            <div id="jo-add-status" style="margin-top:8px;font-size:13px;text-align:right;">⠀</div>
+            <div class="jo-db-form-footer">
+              <button class="btn btn-secondary btn-md" type="reset">Clear form</button>
+              <button class="btn btn-primary btn-md" type="submit">Submit entry</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <br/>
+  <hr style="margin-top: 1rem; margin-bottom: 1rem; border: 0; border-top: 1px solid rgba(0, 0, 0, .1);" />
+  <footer style="text-align: center;width: 71%;margin: 0 auto;">
+    <img src="img/by-nc-nd.png" style="height:1.5em; display:inline-block; padding-right: 1.6em; vertical-align: middle; border-style: none;" />
+    <p style="height:1em; display:inline-block; font-size: small; line-height: 1.5;">
+      Except where otherwise noted, this website is licensed under a <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">Creative Commons Attribution NonCommercial NoDerivatives 4.0 License</a>. By using this website, you agree with our <a href="https://www.loms.cz/privacy-policy/" target="_blank">privacy policy</a>.
+    </p>
+    <p style="font-size: small; line-height: 1.5;">
+      Works published using this LOMS online tool shall reference: J.Hrabovsky, P. Varak, R. Krystufek, LOMS.cz computational platform for high-throughput classical and combinatorial Judd-Ofelt analysis and rare-earth spectroscopy, Scientific Reports, 28945 (2025) DOI: <a href="https://doi.org/10.1038/s41598-025-13620-0" target="_blank">10.1038/s41598-025-13620-0</a>
+    </p>
+  </footer>
+  <script src="js/jo_form_ui.js"></script>
+  <script src="js/jo_add_form_ajax.js"></script>
+  <script src="js/jo_comp_grid.js"></script>
+  <script src="js/jo_browse.js"></script>
+  <script src="js/jo_advanced_rules.js"></script>
+  <script src="js/jo_badges.js"></script>
+  <script src="js/jo_periodic_table.js"></script>
+  <script src="js/jo_component_cells.js"></script>
+  <script src="js/jo_file_upload.js"></script>
+  <script src="js/jo_doi_lookup.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
