@@ -32,7 +32,7 @@ LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and
 
 Following libraries and tools are used:
 
-- CookieConsent v3 — https://github.com/twbs/bootstrap](https://github.com/orestbida/cookieconsent/blob/master/LICENSE
+- CookieConsent v3 — https://github.com/orestbida/cookieconsent/blob/master/LICENSE
 - Firebase JavaScript SDK — https://github.com/firebase/firebase-js-sdk
 - Boxicons — https://github.com/atisawd/boxicons
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
