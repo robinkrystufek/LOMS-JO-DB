@@ -11,6 +11,11 @@
   let lastLookedUpDoi = "";
   let dirty = false;
   let inFlight = null;
+  let lastLookupTime = 0;
+  const lookupIntervalMS = 5000;
+  function lookupSleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
   function looksLikeDoi(doi) {
     return /^10\.\d{4,9}\/\S+$/i.test(doi);
   }
@@ -65,6 +70,9 @@
     }
     inFlight = new AbortController();
     setStatus("loading");
+    const now = Date.now();
+    const wait = lookupIntervalMS - (now - lastLookupTime);
+    if (wait > 0) await lookupSleep(wait);
     try {
       const resp = await fetch("api/doi_lookup.php?doi=" + encodeURIComponent(doi), {
         method: "GET",
@@ -95,6 +103,7 @@
       setRaw([]);
     } 
     finally {
+      lastLookupTime = Date.now();
       inFlight = null;
     }
   }

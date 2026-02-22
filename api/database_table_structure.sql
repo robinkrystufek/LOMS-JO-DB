@@ -1,7 +1,5 @@
--- LOMS SQL backup
--- Generated: 2026-02-20T00:47:38+01:00
-
-SET FOREIGN_KEY_CHECKS=0;
+-- LOMS SQL structure
+-- Generated: 2026-02-22 03:45:57+01:00
 
 -- ----------------------------
 -- Table structure for `jo_composition_components`
@@ -18,7 +16,7 @@ CREATE TABLE `jo_composition_components` (
   KEY `idx_comp_component` (`component`),
   KEY `idx_comp_record` (`jo_record_id`),
   CONSTRAINT `jo_composition_components_ibfk_1` FOREIGN KEY (`jo_record_id`) REFERENCES `jo_records` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=113 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Table structure for `jo_contributors`
@@ -104,16 +102,16 @@ CREATE TABLE `jo_records` (
   KEY `idx_jo_pub` (`publication_id`),
   FULLTEXT KEY `ft_jo_composition` (`composition_text`),
   CONSTRAINT `jo_records_ibfk_1` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Table structure for `publications`
 -- ----------------------------
 
-DROP TABLE IF EXISTS `publications`;
 CREATE TABLE `publications` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int NOT NULL,
   `doi` varchar(255) DEFAULT NULL,
+  `alex_id` varchar(50) DEFAULT NULL,
   `title` varchar(500) NOT NULL,
   `journal` varchar(255) DEFAULT NULL,
   `year` smallint DEFAULT NULL,
@@ -121,10 +119,11 @@ CREATE TABLE `publications` (
   `pages` varchar(50) DEFAULT NULL,
   `url` varchar(500) DEFAULT NULL,
   `authors` text NOT NULL,
-  `metadata` json NOT NULL,
+  `metadata` json DEFAULT NULL,
+  `alex_refs` json DEFAULT NULL,
+  `alex_citations` json DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `doi` (`doi`)
-) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 SET FOREIGN_KEY_CHECKS=1;

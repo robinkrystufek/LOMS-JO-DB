@@ -38,6 +38,19 @@ function normalize_utf8(string $s): string {
   $t = @iconv('UTF-8', 'UTF-8//IGNORE', $s);
   return is_string($t) ? $t : '';
 }
+function parse_JSON_POST($raw): string {
+  if (is_string($raw) && $raw !== '') {
+      $raw = urldecode($raw);
+      $decoded = json_decode($raw, true);
+      if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+          return json_encode(
+              $decoded,
+              JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+          );
+      }
+  }
+  return '{}';
+}
 function json_fail(string $msg, int $http = 400): void {
   if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
   http_response_code($http);

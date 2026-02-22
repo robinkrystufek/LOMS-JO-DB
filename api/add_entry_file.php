@@ -43,27 +43,31 @@ if ($contributor_info === null) json_fail('Contributor info is required (contrib
 $is_contributor_author = bool01(as_trimmed(kv_get_first($kv, 'is_contributor_author')));
 
 $doi     = as_trimmed(kv_get_first($kv, 'pub_doi'));
+$alex_id = as_trimmed(kv_get_first($kv, 'alex_id'));
 $title   = as_trimmed(kv_get_first($kv, 'pub_title'));
 $journal = as_trimmed(kv_get_first($kv, 'pub_journal'));
 $year    = to_int(as_trimmed(kv_get_first($kv, 'pub_year')));
 $url     = as_trimmed(kv_get_first($kv, 'pub_url'));
-$authors   = as_trimmed(kv_get_first($kv, 'pub_authors'));
+$authors = as_trimmed(kv_get_first($kv, 'pub_authors'));
 
 $article_metadata = '{}';
+$alex_refs = '{}';
+$alex_citations = '{}';
 if ($doi !== null) {
   require_once __DIR__ . '/doi_lookup.php';
   try {
+    $doi = normalize_doi($doi);
     $lookup = doi_lookup_fetch($doi);
     if (is_array($lookup)) {
-      $encoded = json_encode($lookup['raw'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-      if ($encoded !== false) {
-        $article_metadata = $encoded;
-      }
-      if ($title === null || $title === '')   $title   = as_trimmed($lookup['title'] ?? null);
-      if ($authors === null || $authors === '') $authors = as_trimmed($lookup['authors'] ?? null);
-      if ($journal === null || $journal === '') $journal = as_trimmed($lookup['journal'] ?? null);
+      $article_metadata = json_encode((object)($lookup['raw'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      $alex_refs = json_encode((object)($lookup['alex_refs'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      $alex_citations = json_encode((object)($lookup['alex_citations'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      if ($alex_id === null || $alex_id === '')   $alex_id = as_trimmed($lookup['alex_id'] ?? null);
+      if ($title === null || $title === '')       $title   = as_trimmed($lookup['title'] ?? null);
+      if ($authors === null || $authors === '')   $authors = as_trimmed($lookup['authors'] ?? null);
+      if ($journal === null || $journal === '')   $journal = as_trimmed($lookup['journal'] ?? null);
+      if ($url === null || $url === '')           $url     = as_trimmed($lookup['url'] ?? null);
       if (($year === null || $year === 0) && !empty($lookup['year'])) $year = to_int((string)$lookup['year']);
-      if ($url === null || $url === '')     $url     = as_trimmed($lookup['url'] ?? null);
     }
   } catch (Throwable $e) {
       // Non-fatal: if DOI lookup fails, we can still proceed with whatever metadata we have
@@ -172,38 +176,47 @@ try {
       $publication_id = (int)$row['id'];
       $upd = $pdo->prepare("
         UPDATE publications
-        SET title = :title,
+        SET alex_id = :alex_id,
+            title = :title,
             journal = :journal,
             year = :year,
             url = :url,
             authors = :authors,
-            metadata = :metadata
+            metadata = :metadata,
+            alex_refs = :alex_refs,
+            alex_citations = :alex_citations
         WHERE id = :id
       ");
       $upd->execute([
+        ':alex_id' => $alex_id,
         ':title' => $title,
         ':journal' => $journal,
         ':year' => $year,
         ':url' => $url,
         ':id' => $publication_id,
         ':authors' => $authors,
-        ':metadata' => $article_metadata
+        ':metadata' => $article_metadata,
+        ':alex_refs' => $alex_refs,
+        ':alex_citations' => $alex_citations
       ]);
     }
   }
   if ($publication_id === null) {
     $ins = $pdo->prepare("
-      INSERT INTO publications (doi, title, journal, year, url, authors, metadata)
-      VALUES (:doi, :title, :journal, :year, :url, :authors, :metadata)
+      INSERT INTO publications (doi, alex_id, title, journal, year, url, authors, metadata, alex_refs, alex_citations)
+      VALUES (:doi, :alex_id, :title, :journal, :year, :url, :authors, :metadata, :alex_refs, :alex_citations)
     ");
     $ins->execute([
       ':doi' => $doi,
+      ':alex_id' => $alex_id,
       ':title' => $title,
       ':journal' => $journal,
       ':year' => $year,
       ':url' => $url,
       ':authors' => $authors,
-      ':metadata' => $article_metadata
+      ':metadata' => $article_metadata,
+      ':alex_refs' => $alex_refs,
+      ':alex_citations' => $alex_citations
     ]);
     $publication_id = (int)$pdo->lastInsertId();
     if ($publication_id <= 0) json_fail('Failed to create publication.', 500);
