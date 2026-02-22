@@ -28,16 +28,14 @@ For the live demo, visit the LOMS [database website][LOMSDB].
 
 ## Credits
 
-LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and R. Krystufek, and improved by a growing list of contributors.
-
-Following libraries and tools are used:
+LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and R. Krystufek, and improved by a growing list of contributors. Following libraries and their dependencies were used:
 
 - CookieConsent v3 — https://github.com/orestbida/cookieconsent/blob/master/LICENSE
 - Firebase JavaScript SDK — https://github.com/firebase/firebase-js-sdk
 - Boxicons — https://github.com/atisawd/boxicons
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
 
-The project builds upon the literature datasets contributed by the rare-earth spectroscopy community.
+This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry.
 
 ## License
 
