@@ -17,10 +17,10 @@
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
     }[c]));
   }
-  function renderRules() {
+  function renderRules(reload = true) {
     if (!rules.length){
       elList.innerHTML = `<div style="font-size:12px;color:#6c757d;">No advanced rules.</div>`;
-      if (typeof window.load === 'function') window.load(1);
+      if (typeof window.load === 'function' && reload) window.load(1);
       return;
     }
     elList.innerHTML = rules.map((r, idx) => `
@@ -40,7 +40,7 @@
         renderRules();
       });
     });
-    if (typeof window.load === 'function') window.load(1);
+    if (typeof window.load === 'function' && reload) window.load(1);
   }
   function normalizeComponent(s){
     return s.trim();
@@ -60,7 +60,11 @@
   }
   function clearRules() {
     rules.length = 0;
-    renderRules();
+    renderRules(true);
+  }
+  function clearRulesBackground() {
+    rules.length = 0;
+    elList.innerHTML = `<div style="font-size:12px;color:#6c757d;">No advanced rules.</div>`;
   }
   elToggle.addEventListener('click', () => {
     elPanel.classList.toggle('open');
@@ -74,6 +78,7 @@
   renderRules();
   window.__JO_ADV_RULES__ = {
     getRules: () => rules.slice(),
-    clear: clearRules
+    clear: clearRules,
+    clearBackground: clearRulesBackground
   };
 })();

@@ -60,7 +60,7 @@ function oa_fetch_citations(string $targetWorkId, int $limit = 10000, int $perPa
     while (count($items) < $limit && $cursor) {
         $url = 'https://api.openalex.org/works'
             . '?filter=' . rawurlencode("cites:$targetWorkId,has_doi:true")
-            . '&select=' . rawurlencode('id,doi,display_name,publication_year,authorships')
+            . '&select=' . rawurlencode('id,doi,display_name,publication_year,authorships,biblio,primary_location')
             . '&per-page=' . $perPage
             . '&cursor=' . rawurlencode($cursor);
         $data = get_json($url);
@@ -77,11 +77,32 @@ function oa_fetch_citations(string $targetWorkId, int $limit = 10000, int $perPa
             if ($doi === '' && isset($w['ids']['doi'])) {
                 $doi = normalize_doi($w['ids']['doi']);
             }
+            $b = $w['biblio'] ?? [];
+            $vol   = trim($b['volume']      ?? '');
+            $issue = trim($b['issue']       ?? '');
+            $fp    = trim($b['first_page']  ?? '');
+            $lp    = trim($b['last_page']   ?? '');
+            $out = '';
+            if ($vol !== '') {
+                $out .= 'vol. ' . $vol;
+            }
+            if ($issue !== '') {
+                $out .= ($out !== '' ? '' : '') . '(' . $issue . ')';
+            }
+            if ($fp !== '' || $lp !== '') {
+                if ($out !== '') $out .= ' ';
+                $out .= 'p. ' . $fp;
+                if ($lp !== '') {
+                    $out .= '-' . $lp;
+                }
+            }
             $items[] = [
                 'alex_id' => $alexId,
                 'doi'     => $doi,
                 'year'    => (int)($w['publication_year'] ?? 0),
                 'title'   => (string)($w['display_name'] ?? ''),
+                'journal' => (string)($w['primary_location']['source']['display_name'] ?? ''),
+                'biblio'  => (string)($out ?? ''),
                 'authors' => oa_compact_authors($w['authorships'] ?? [], 8),
             ];
         }

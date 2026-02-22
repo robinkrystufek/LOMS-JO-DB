@@ -176,7 +176,8 @@ function render(items) {
             <dd><a href="${(it.pub_url || '')}" target="_blank">${(it.doi || '')}</a></dd>
           </dl>
           <div class="jo-db-btn-group">
-            <button class="btn btn-primary btn-sm" type="button" onclick="findEntriesByParentDOI('${esc(it.doi)}');"><i class="fa fa-search"></i>&nbsp;&nbsp;Find entries from parent publication</button>
+          <button class="btn btn-primary btn-sm jo-parentpub-zoom" type="button" data-doi="${esc(it.doi || '')}" data-pub-id="${esc(it.publication_id || '')}"><i class="fa fa-search"></i>&nbsp;&nbsp;Publication details</button>
+            <button class="btn btn-primary btn-sm jo-find-parent-doi" data-doi="${esc(it.doi || '')}" type="button"><i class="fa fa-arrow-right"></i>&nbsp;&nbsp;Show entries from this publication</button>
               <div class="btn-split">
                 <button class="btn btn-secondary btn-sm" type="button" onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">
                   <i class="fa fa-download"></i>&nbsp;&nbsp;Export citation
@@ -215,6 +216,13 @@ function render(items) {
       const btn = tr.querySelector('.jo-db-view-btn');
       if (btn) toggleDetailsFor(btn);
     });
+  });
+  tbody?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.jo-find-parent-doi');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    findEntriesByParentDOI(btn.getAttribute('data-doi') || '');
   });
 }
 function toggleDetailsFor(btn) {
@@ -290,7 +298,9 @@ function getFilters() {
     ...getBadgeFilters()
   };
 }
+let loadSeq = 0;
 async function load(page) {
+  const seq = ++loadSeq;
   setResultsLoading(true);
   currentPage = page;
   const params = new URLSearchParams({
@@ -310,6 +320,7 @@ async function load(page) {
   const url = `api/browse_records.php?${params.toString()}`;
   const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
   const data = await res.json();
+  if (seq !== loadSeq) return;
   if (!data.ok) throw new Error(data.error || 'Fetch failed');
   render(data.items || []);
   renderPager(data.page, data.total_pages, data.total);
@@ -330,20 +341,29 @@ function resetSearchInput(reload = true) {
   document.getElementById('advanced-panel').classList.remove('open');
   document.getElementById('advanced-panel').style.display="none";
   document.getElementById('filter-composition-text').value = '';
-  window.__JO_ADV_RULES__?.clear?.();
-  ['filter-has-jo','filter-has-density','filter-jo-original','filter-jo-recalc']
-  .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   sortBy = 'id';
   sortDir = 'desc'; 
   if(reload){
+    window.__JO_ADV_RULES__?.clearBackground?.();
     updateSortIndicators();
     load(1);
   }
+  else {
+    window.__JO_ADV_RULES__?.clearBackground?.();
+  }
 }
+let findParentDoiThrottleTimer = null;
+let lastParentDoi = null;
 function findEntriesByParentDOI(doi) {
-  resetSearchInput(false);
-  document.getElementById('filter-pub-doi').value = doi;
-  load(1);
+  lastParentDoi = doi;
+  if (findParentDoiThrottleTimer) return; 
+  findParentDoiThrottleTimer = setTimeout(() => {
+    findParentDoiThrottleTimer = null;
+    resetSearchInput(false);
+    const input = document.getElementById('filter-pub-doi');
+    if (input) input.value = lastParentDoi || '';
+    load(1);
+  }, 500);
 }
 function exportCitation(id, format) {
   window.location.href = `api/export_entry.php?type=citation&id=${encodeURIComponent(id)}&format=${encodeURIComponent(format)}`;
