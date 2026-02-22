@@ -9,14 +9,12 @@ searchBox.addEventListener("click", ()=>{
   }
 });
 let navLinks = document.querySelector(".nav-links");
-let menuOpenBtn = document.querySelector(".navbar .bx-menu");
-let menuCloseBtn = document.querySelector(".nav-links .bx-x");
-menuOpenBtn.onclick = function() {
+document.querySelector(".navbar .bx-menu")?.addEventListener("click", () => {
   navLinks.style.left = "0";
-}
-menuCloseBtn.onclick = function() {
+});
+document.querySelector(".nav-links .bx-x")?.addEventListener("click", () => {
   navLinks.style.left = "-100%";
-}
+});
 let jsArrow = document.querySelector(".js-arrow");
 jsArrow.onclick = function() {
   navLinks.classList.toggle("show3");
