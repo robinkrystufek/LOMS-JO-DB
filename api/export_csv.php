@@ -46,6 +46,7 @@ $reIon        = trim((string)($_GET['re_ion'] ?? ''));
 $hostType     = trim((string)($_GET['host_type'] ?? ''));
 $hostFamily   = trim((string)($_GET['host_family'] ?? ''));
 $compositionQ = trim((string)($_GET['composition_q'] ?? ''));
+$elementQ     = trim((string)($_GET['element_q'] ?? ''));
 
 try {
   $pdo = new PDO(
@@ -65,12 +66,31 @@ try {
   if ($hostType !== '') { $where[] = "r.host_type = :host_type"; $params[':host_type'] = $hostType; }
   if ($hostFamily !== '') { $where[] = "r.host_family = :host_family"; $params[':host_family'] = $hostFamily; }
   if ($compositionQ !== '') {
-    $where[] = "(r.composition_text LIKE :composition_q OR EXISTS (
-      SELECT 1 FROM jo_composition_components cc
-      WHERE cc.jo_record_id = r.id
-        AND cc.component LIKE '%".$compositionQ."%'
-    ))";
-    $params[':composition_q'] = '%' . $compositionQ . '%';
+    $where[] = "(
+      r.re_ion LIKE :composition_q_re_ion OR 
+      r.composition_text LIKE :composition_q_text OR 
+      EXISTS (
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE :composition_q_component
+      ))";
+    $params[':composition_q_re_ion'] = '%' . $compositionQ . '%';
+    $params[':composition_q_text'] = '%' . $compositionQ . '%';
+    $params[':composition_q_component'] = '%' . $compositionQ . '%';
+  }
+  if ($elementQ !== '') {
+    $elementQ = ucfirst(strtolower(trim($elementQ)));
+    if (preg_match('/^[A-Z][a-z]?$/', $elementQ)) {
+      $where[] = "(
+        REGEXP_LIKE(r.re_ion, :composition_regex, 'c')
+        OR EXISTS (
+          SELECT 1 FROM jo_composition_components cc
+          WHERE cc.jo_record_id = r.id
+            AND REGEXP_LIKE(cc.component, :component_regex, 'c')
+        ))";
+      $params[':composition_regex'] = $elementQ . '(?![a-z])';
+      $params[':component_regex']   = $elementQ . '(?![a-z])';
+    }
   }
   jo_apply_badge_filters($_GET, $where, $params);
   jo_apply_publication_filters($_GET, $where);
