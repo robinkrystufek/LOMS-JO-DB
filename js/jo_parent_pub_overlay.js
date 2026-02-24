@@ -134,7 +134,7 @@
                 </div>
                 <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:10px; font-size:12px;">
                 ${Number.isFinite(joCount) ? `
-                <span role="button" title="Show JO entries using this DOI" data-jo-doi="${esc(doi)}"= onclick="findEntriesByParentDOI('${esc(doi)}');" id="find-jo-records-btn"
+                <span role="button" title="Show entries from this publication" data-jo-doi="${esc(doi)}"= onclick="findEntriesByParentDOI('${esc(doi)}');" id="find-jo-records-btn"
                 style="border:1px solid #2F6FDB; background:#2F6FDB; color:#fff; padding:3px 10px; border-radius:999px; cursor:pointer; font-weight:600; transition:all .15s ease; user-select:none;"
                 onmouseover="this.style.background='#255ac0'"
                 onmouseout="this.style.background='#2F6FDB'"
@@ -244,7 +244,7 @@
                 headline,
                 subline,
                 doi,
-                badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255);" title="Search for record from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
+                badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255); padding: 1px 7px; margin-right: 6px;" title="Show entries from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
                 });
             }
             return renderPubCard({ headline, subline, doi });
@@ -279,7 +279,7 @@
                 subline,
                 doi,
                 extraLink: oaUrl ? { label: "OpenAlex", url: oaUrl } : null,
-                badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255);" title="Search for record from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
+                badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255); padding: 1px 7px; margin-right: 6px;" title="Show entries from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
             });
         }
         return renderPubCard({
@@ -311,7 +311,7 @@
         document.addEventListener("keydown", onKey);
         document.body.append(overlay);
         if (!cleanDoi && !pubId) {
-            body.innerHTML = `<div style="color:crimson; font-weight:700;">No DOI (or publication_id) available for this entry.</div>`;
+            body.innerHTML = `<div style="color:crimson; font-weight:700;">No DOI available for this entry.</div>`;
             return;
         }
         body.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">

@@ -12,6 +12,12 @@
   --font-main: Poppins, sans-serif;
   ;
 }
+.fa-flip-swap {
+  transition: transform 0.25s ease;
+}
+.fa-flip-swap.flip {
+  transform: rotateY(90deg);
+}
 .btn-split {
   position: relative;
   display: inline-flex;

@@ -163,6 +163,7 @@
                   <div class="jo-db-col">
                     <label for="filter-composition-text">Composition (text)</label>
                     <input id="filter-composition-text" class="jo-db-input" placeholder="e.g. 60SiO2-20Na2O-20CaO" />
+                    <input id="filter-composition-element" value="" type="hidden" />
                     <div class="jo-db-advanced-toggle" id="advanced-toggle">
                       Advanced composition filter…
                     </div>
@@ -315,7 +316,7 @@
                 <strong>Upload database entry file</strong>
                 <div class="jo-db-help">
                   Upload the database entry file
-                  (JO_DAT_* format).
+                  (JO_DAT_* format, <a href="dist/jo_record_example.txt" target="_blank" download>example file</a>).
                 </div>
                 <input type="file" name="jo_db_file_file_format" accept=".txt,.dat,.cfg,.json" />
               </div>
@@ -430,7 +431,7 @@
               <div class="jo-db-col">
                 <label for="comp-text">Composition (verbatim) <i class="fa fa-question-circle tooltip-icon" data-tooltip="Please maintain proper subscripts indicating stoichiometry using (₂) button on the right"></i></label>
                 <div class="jo-input-wrap">
-                  <textarea id="comp-text" name="composition_text" class="jo-db-textarea" placeholder="60SiO₂–20Na₂–20CaO + 0.2 mol% Er₂O₃"></textarea>
+                  <textarea id="comp-text" name="composition_text" class="jo-db-textarea" placeholder="60SiO₂–20Na₂O–20CaO + 0.2 mol% Er₂O₃"></textarea>
                   <div class="jo-input-actions">
                     <button type="button" class="jo-inbtn" id="comp-subscript-btn" title="Convert digits to subscripts">₂</button>
                   </div>
@@ -502,10 +503,10 @@
                   </div>
                   <div class="jo-db-col">
                     <select id="re-conc-unit" name="re_conc_unit" class="jo-db-select">
-                      <option>mol%</option>
-                      <option>wt%</option>
-                      <option>at%</option>
-                      <option>ions/cm³</option>
+                      <option value="mol%">mol%</option>
+                      <option value="wt%">wt%</option>
+                      <option value="at%">at%</option>
+                      <option value="ions/cm3">ions/cm³</option>
                     </select>
                   </div>
                 </div>
