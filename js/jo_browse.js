@@ -222,7 +222,15 @@ function render(items) {
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
+    const icon = btn.querySelector('i');
+    if (!icon) return;
+    icon.classList.add('fa-flip-swap', 'flip');
+    btn.disabled = true;
     findEntriesByParentDOI(btn.getAttribute('data-doi') || '');
+    setTimeout(() => {
+      icon.className = 'fa fa-repeat fa-spin fa-flip-swap';
+      icon.classList.remove('flip');
+    }, 250);
   });
 }
 function toggleDetailsFor(btn) {
@@ -284,6 +292,7 @@ function getFilters() {
   const re_ion = document.getElementById('filter-re-ion')?.value || '';
   const host_type = document.getElementById('filter-host-type')?.value || '';
   const composition_q = document.getElementById('filter-composition-text')?.value || '';
+  const element_q = document.getElementById('filter-composition-element')?.value || '';
   const pub_doi_q = document.getElementById('filter-pub-doi')?.value || '';
   const pub_authors_q = document.getElementById('filter-pub-author')?.value || '';
   const pub_title_q = document.getElementById('filter-pub-title')?.value || '';
@@ -292,7 +301,7 @@ function getFilters() {
   const jo_original = document.getElementById('filter-jo-original')?.checked ? 1 : 0;
   const jo_recalc = document.getElementById('filter-jo-recalc')?.checked ? 1 : 0;
   return {
-    re_ion, host_type, composition_q, pub_doi_q, pub_title_q, pub_authors_q,
+    re_ion, host_type, composition_q, pub_doi_q, pub_title_q, pub_authors_q, element_q,
     has_jo, has_density, 
     jo_original, jo_recalc,
     ...getBadgeFilters()
@@ -327,6 +336,7 @@ async function load(page) {
   bindSortHeaders();
 }
 function resetSearchInput(reload = true) {
+  window.resetPeriodicTable();
   const c = document.getElementById("badge-selector");
   c?.querySelectorAll(".jo-db-badge").forEach(b => applyBadgeState(b, -1));
   document.getElementById('filter-pub-doi').value = '';
@@ -341,6 +351,7 @@ function resetSearchInput(reload = true) {
   document.getElementById('advanced-panel').classList.remove('open');
   document.getElementById('advanced-panel').style.display="none";
   document.getElementById('filter-composition-text').value = '';
+  document.getElementById('filter-composition-element').value = '';
   sortBy = 'id';
   sortDir = 'desc'; 
   if(reload){

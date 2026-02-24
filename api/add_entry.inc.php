@@ -140,7 +140,7 @@ function parse_kv_file(string $text): array {
     $line = trim($line);
     if ($line === '') continue;
     if ($line[0] === '#' || $line[0] === ';') continue;
-    if (!preg_match('/^([A-Za-z0-9_]+)\s*=\s*"((?:\\\\.|[^"\\\\])*)"\s*$/', $line, $m)) {
+    if (!preg_match('/^([A-Za-z0-9_]+)\s*=\s*"((?:\\\\.|[^"\\\\])*)"\s*(?:[;#].*)?$/', $line, $m)) {
       json_fail('Invalid line format at line ' . ($ln + 1) . ': ' . $line);
     }
     $key = $m[1];

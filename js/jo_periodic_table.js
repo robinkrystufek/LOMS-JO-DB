@@ -92,8 +92,16 @@
   function categoryFor(e) {
     return e.c || "unknown";
   }
+  let lastSymbol = "";
   function normalizePicked(e) {
-    return { atomicNumber: e.z, symbol: e.s, name: e.n };
+    if(e.s === lastSymbol) {
+      lastSymbol = "";
+      return { atomicNumber: 0, symbol: "", name: "" };
+    }
+    else {
+      lastSymbol = e.s;
+      return { atomicNumber: e.z, symbol: e.s, name: e.n };
+    }
   }
   function createTableUI({
     onPick,
@@ -169,12 +177,16 @@
         onclick: () => {
           const picked = normalizePicked(e);
           if (storeToWindow) window.__pickedElement = picked;
-          status.textContent = `Selected: ${picked.name} (${picked.symbol}), Z=${picked.atomicNumber}`;
+          if(picked.symbol == "")  status.textContent = "Click an element to select it.";
+          else status.textContent = `Selected: ${picked.name} (${picked.symbol}), Z=${picked.atomicNumber}`;
           setHighlightedSymbol(picked.symbol)
           if (typeof onPick === "function") onPick(picked);
         }
       });
-      btn.addEventListener("mouseenter", () => { status.textContent = `${e.n} (${e.s}), Z=${e.z}`; });
+      btn.addEventListener("mouseenter", () => { 
+        if(e.s == "") status.textContent = "Click an element to select it.";
+        else status.textContent = `${e.n} (${e.s}), Z=${e.z}`; 
+      });
       btn.addEventListener("mouseleave", () => { status.textContent = "Click an element to select it."; });
       if (tileMode === "symbol") {
         const H = compact ? 31 : 38;
@@ -302,6 +314,14 @@
       setHighlightedSymbol,
       destroy: () => root.remove(),
       focusSearch: () => search.focus(),
+      reset: () => {
+        lastSymbol = "";
+        if (storeToWindow) {
+          window.__pickedElement = { atomicNumber: 0, symbol: "", name: "" };
+        }
+        setHighlightedSymbol("");
+        status.textContent = "Click an element to select it.";
+      }
     };
   }
   function buildOverlay(resolve, reject) {
@@ -396,11 +416,12 @@
     nodes.forEach(n => n.remove());
     return nodes.length > 0;
   };
+  window.resetPeriodicTable = () => table.reset();
 })();
 const table = renderPeriodicTable("#filters-render-slot", {
   compact: true,
   tileMode: "symbol",
-  onPick: el => { document.getElementById('filter-composition-text').value = el.symbol; document.getElementById('btn-search').click(); console.log('Picked element:', el); }
+  onPick: el => { document.getElementById('filter-composition-element').value = el.symbol; document.getElementById('btn-search').click(); console.log('Picked element:', el); }
 });
 document.getElementById("filter-composition-text").addEventListener("input", e => {
   table.setHighlightedSymbol(e.target.value);

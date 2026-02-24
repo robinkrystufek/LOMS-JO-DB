@@ -1,0 +1,44 @@
+# LOMS JO DB import file example
+pub_doi="10.1063/1.432659" #                            Required, only DOI is needed to fetch bibliographic info
+pub_title="" #                                          Optional, all pub_* entries can be used to override the DOI lookup if needed
+pub_journal="" #                                        Optional
+pub_year="" #                                           Optional
+pub_url="" #                                            Optional
+pub_authors="R. Reisfeld; J. Hormadaly" #               Optional
+re_ion="Ho" #                                           Required, can also contain multiple ions in format eg. Ho,Er,...
+re_conc_value="3.0000" #                                Required
+# re_conc_value_upper="4.0000" #                        Optional, can be used to specify a range of concentrations
+re_conc_value_note="Ho2O3; wt of the base glass" #      Optional note regarding concentration
+re_conc_unit="wt%" #                                    Required, valid values 'mol%', 'wt%', 'at%', 'ions/cm3'
+sample_label="P2O5-Na2O: Ho" #                          Optional, can be used to specify a sample ID used in the publication
+host_type="Glass (G)" #                                 Required, valid values 'Glass (G)', 'Glass-ceramic (GC)', 'Polycrystalline (PC)', 'Single-crystalline (SC)', 'Vapor (V)', 'Solution (S)', 'Melt (M)', 'Powder (P)', 'Aqueous (A)', 'Other'
+composition_text="50P₂O₅-50Na₂O: Ho₂O₃" #               Required, should contain verbatim composition description from the publication, please use subscripts to properly indicate stoichiometry 0123456789->₀₁₂₃₄₅₆₇₈₉
+omega2="5.600000" #                                     Required
+omega4="2.720000" #                                     Required
+omega6="1.870000" #                                     Required
+# omega2_error="0.280000" #                             Optional, can be used to specify the margin of error
+# omega4_error="0.410000" #                             Optional
+# omega6_error="0.260000" #                             Optional
+has_density="0" #                                       Required, valid values 0: not available, 1: unknown, 2: available
+# density_g_cm3="1.001" #                               Optional, indicates density if has_density="2"
+is_contributor_author="0" #                             Required, valid values 0: contributor is not the author, 1: contributor is the author of this work
+refractive_index_option="0" #                           Required, valid values 0: not available, 1: unknown, 2: available (single n value), 3: available (relation n(λ))
+combinatorial_jo_option="0" #                           Required, valid values 0: not available, 1: unknown, 2: available
+sigma_f_s_option="2" #                                  Required, valid values 0: not available, 1: unknown, 2: available
+mag_dipole_option="0" #                                 Required, valid values 0: not available, 1: unknown, 2: available
+reduced_element_option="2" #                            Required, valid values 0: not available, 1: unknown, 2: available
+recalculated_loms_option="0" #                          Required, valid values 0: not available, 1: unknown, 2: available. Choosing 2 means a concurrent LOMS data file upload is required (right side of the form)
+refractive_index_note="" #                              Optional
+combinatorial_jo_note="" #                              Optional
+sigma_f_s_note="" #                                     Optional
+mag_dipole_note="" #                                    Optional
+reduced_element_note="" #                               Optional
+recalculated_loms_note="" #                             Optional
+extra_notes="" #                                        Optional, note pertaining to the record as a whole
+# Normalized composition, given in triplets of key-values comp_component, comp_value & comp_unit for each component
+comp_component="P₂O₅" #                                 Required, please use subscripts to properly indicate stoichiometry 0123456789->₀₁₂₃₄₅₆₇₈₉
+comp_value="50.0000" #                                  Required
+comp_unit="mol%" #                                      Required, valid values 'mol%', 'wt%', 'at%', 'ions/cm3'
+comp_component="Na₂O" #                                 Optional, only one component entry is required per record, please use subscripts to properly indicate stoichiometry 0123456789->₀₁₂₃₄₅₆₇₈₉
+comp_value="50.0000" #                                  Optional, only one component entry is required per record
+comp_unit="mol%" #                                      Optional, only one component entry is required per record, valid values 'mol%', 'wt%', 'at%', 'ions/cm3'
