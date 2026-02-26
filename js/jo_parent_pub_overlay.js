@@ -100,7 +100,7 @@
         return { overlay, body, closeBtn: top.querySelector("#jo-alex-close-btn") };
     }
     function renderSummary(row, oaWork, crMsg, oaCitations, meta = {}) {
-        const title = oaWork?.title || row.title || "(no title)";
+        const title = (oaWork?.title || row.title || "(no title)").replace(/<[^>]+>/g, '');
         const year = oaWork?.publication_year || row.year || "";
         const journal = oaWork?.primary_location?.source?.display_name || row.journal || "";
         const doi = (oaWork?.doi || row.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
@@ -228,7 +228,7 @@
             const author = r.author || "";
             const year = r.year || "";
             const jt = r["journal-title"] || r["series-title"] || "";
-            const title = r["article-title"] || "";
+            const title = (r["article-title"] || "").replace(/<[^>]+>/g, '');
             const vol = r.volume || "";
             const fp = r["first-page"] || "";
             const doi = r.DOI || "";
@@ -263,7 +263,7 @@
         items.sort((a, b) => (b.jo - a.jo) || (a.i - b.i));
         const rows = items.map(({ it }) => {
         const journal = it.journal || "";
-        const title = it.title || "";
+        const title = (it.title || "").replace(/<[^>]+>/g, '');
         const year = it.year || "";
         const authors = it.authors || "";
         const firstSurname = firstSurnameFromAuthors(authors);

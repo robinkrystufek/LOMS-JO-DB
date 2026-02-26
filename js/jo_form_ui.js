@@ -1,29 +1,15 @@
-var userLoggedIn = false;
-function updateAddTabLock(userLoggedIn) {
-  const addTab = document.getElementById('tab-add-btn');
-  if (!addTab) return;
-  if (!userLoggedIn) {
-    addTab.classList.add('locked');
-    addTab.dataset.tooltip = "You need to be registered to use this feature";
-    if (!addTab.querySelector('i')) {
-      const icon = document.createElement('i');
-      icon.className = 'bx bx-lock-alt';
-      addTab.appendChild(icon);
-    }
-  } 
-  else {
-    addTab.classList.remove('locked');
-    addTab.removeAttribute('data-tooltip');
-    const icon = addTab.querySelector('i');
-    if (icon) icon.remove();
-  }
-}
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('jo-add-form');
     if (!form) return;
-
     form.addEventListener('reset', () => {
+      const tbody = form.querySelector('#comp-grid-body');
+      if (tbody) {
+        const rows = [...tbody.querySelectorAll("tr")];
+        rows.slice(1).forEach(r => r.remove());        
+      }
+      form.querySelector('#jo-add-status').textContent = '';
+      form.querySelector('#is-revision-of-id').value = null;
       const disabled = Array.from(
         form.querySelectorAll('input:disabled, textarea:disabled, select:disabled')
       ).map(el => ({ el, value: el.value }));

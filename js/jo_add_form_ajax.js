@@ -2,35 +2,47 @@
   const form = document.getElementById('jo-add-form');
   if (!form) return;
   const statusEl = document.getElementById('jo-add-status');
+  const btn = document.getElementById('form-submit-btn');
+  function setStatus(msg, isOk) {
+    if (!statusEl) {
+      alert(msg || '');
+      return;
+    }
+    statusEl.textContent = msg || '';
+    statusEl.style.fontWeight = '600';
+    statusEl.style.color = isOk ? 'green' : 'crimson';
+  }
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (statusEl) statusEl.textContent = 'Submitting…';
+    if (btn) btn.disabled = true;
+    setStatus('Submitting…', true);
     try {
       const fd = new FormData(form);
-      const res = await fetch(form.action, {
+      const resp = await fetch(form.action, {
         method: 'POST',
         body: fd
       });
-      const text = await res.text();
+      const text = await resp.text();
       let data;
-      try { data = JSON.parse(text); }
-      catch { throw new Error('Server did not return JSON:\n' + text); }
-      if (data.ok) {
-        if (statusEl) {
-          statusEl.textContent =
-            `Saved! publication_id=${data.publication_id}, jo_record_id=${data.jo_record_id}` +
-            (data.loms_file_path ? `, file=${data.loms_file_path}` : '');
-        } else {
-          alert(`Saved!\npublication_id=${data.publication_id}\njo_record_id=${data.jo_record_id}`);
-        }
-      } else {
-        const msg = data.error || 'Unknown error';
-        if (statusEl) statusEl.textContent = 'Error: ' + msg;
-        else alert('Error: ' + msg);
+      try { 
+        data = JSON.parse(text); 
       }
+      catch { 
+        setStatus('Error: Non-JSON response', false);
+        console.error("Server did not return JSON:", text, "status:", resp.status);
+        return;
+      }
+      if (!resp.ok || !data || data.ok !== true) {
+        const msg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
+        setStatus('Error: ' + msg, false);
+        return;
+      }
+      setStatus(`Record #${data.jo_record_id} submitted for approval!`, true);
     } catch (err) {
-      if (statusEl) statusEl.textContent = 'Error: ' + (err?.message || err);
-      else alert('Error: ' + (err?.message || err));
+      setStatus('Error: ' + (err?.message || err), false);
+    }
+    finally {
+      if (btn) btn.disabled = false;
     }
   });
 })();

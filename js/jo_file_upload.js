@@ -18,7 +18,7 @@
       return;
     }
     if (btn) btn.disabled = true;
-    setStatus('Saving...', true);
+    setStatus('Submitting…', true);
     try {
       const fd = new FormData(form);
       const resp = await fetch(form.action, {
@@ -32,8 +32,8 @@
         data = JSON.parse(text);
       } 
       catch (err) {
-        setStatus('Error: server did not return JSON. Check PHP errors/logs.', false);
-        console.error("Non-JSON response:", text, "status:", resp.status);
+        setStatus('Error: Non-JSON response', false);
+        console.error("Server did not return JSON:", text, "status:", resp.status);
         return;
       }
       if (!resp.ok || !data || data.ok !== true) {
@@ -41,14 +41,10 @@
         setStatus('Error: ' + msg, false);
         return;
       }
-      const pub = data.publication_id ? `pub_id=${data.publication_id}` : '';
-      const rec = data.jo_record_id ? `record_id=${data.jo_record_id}` : '';
-      const extra = [rec, pub].filter(Boolean).join(', ');
-      setStatus('Saved' + (extra ? ` (${extra})` : '') + '.', true);
+      setStatus(`Record #${data.jo_record_id} submitted for approval!`, true);
     } 
     catch (err) {
-      console.error(err);
-      setStatus('Error: network or server failure.', false);
+      setStatus('Error: ' + (err?.message || err), false);
     } 
     finally {
       if (btn) btn.disabled = false;

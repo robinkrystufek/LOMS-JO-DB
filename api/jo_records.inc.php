@@ -65,7 +65,7 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
   $ruleOp   = $get['comp_op'] ?? [];
   $ruleVal  = $get['comp_value'] ?? [];
   $ruleUnit = $get['comp_unit'] ?? [];
-  $allowedOps = ['>=' => '>=', '<=' => '<=', '=' => '='];
+  $allowedOps = ['>=' => '>=', '<=' => '<=', '=' => '=', '>' => '>', '<' => '<'];
   if (!is_array($ruleComp) || !is_array($ruleOp) || !is_array($ruleVal) || !is_array($ruleUnit)) return;
   $n = min(count($ruleComp), count($ruleOp), count($ruleVal), count($ruleUnit));
   for ($i = 0; $i < $n; $i++) {

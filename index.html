@@ -173,9 +173,11 @@
                         <select class="jo-db-select" id="adv-op">
                           <option value=">=">&ge;</option>
                           <option value="<=">&le;</option>
+                          <option value=">">&gt;</option>
+                          <option value="<">&lt;</option>
                           <option value="=">=</option>
                         </select>
-                        <input class="jo-db-input" id="adv-value" type="number" step="0.0001" placeholder="Value" />
+                        <input class="jo-db-input" id="adv-value" type="number" placeholder="Value" step="any" />
                         <select class="jo-db-select" id="adv-unit">
                           <option value="mol%">mol%</option>
                           <option value="wt%">wt%</option>
@@ -300,19 +302,22 @@
       <form method="POST" action="api/add_entry_file.php" enctype="multipart/form-data" id="jo-add-form-file">
         <div class="jo-db-form-section">
           <h2>Input format</h2>
-          <div class="jo-db-radio-group">
-            <label>
+          <div class="jo-db-radio-group" style="margin: 0;">
+            <label style="margin: 0;">
               <input type="radio" name="input_format" value="form" checked />
               Form
             </label>
-            <label>
+            <label style="margin: 0;">
               <input type="radio" name="input_format" value="upload" />
               File upload
             </label>
           </div>
+        </div>
+        <div class="jo-db-form-section jo-db-hidden" id="jo-db-upload-file-format">
+          <h2>Database entry upload</h2>
           <div class="jo-db-row">
             <div class="jo-db-col">
-              <div id="jo-db-upload-file-format" class="jo-db-upload-block jo-db-hidden">
+              <div class="jo-db-upload-block" id="jo-db-file-upload-file-format">
                 <strong>Upload database entry file</strong>
                 <div class="jo-db-help">
                   Upload the database entry file
@@ -322,7 +327,7 @@
               </div>
             </div>
             <div class="jo-db-col">
-              <div id="jo-recalc-upload-file-format" class="jo-db-upload-block jo-db-hidden">
+              <div id="jo-recalc-upload-file-format" class="jo-db-upload-block">
                 <strong>Upload LOMS source file (optional)</strong>
                 <div class="jo-db-help">
                   Upload the text / configuration file produced by the LOMS JO module
@@ -332,7 +337,7 @@
               </div>
             </div>
           </div>
-          <div class="jo-db-row jo-db-hidden" id="file-submit" style="align-items:center; gap:12px;">
+          <div class="jo-db-row jo-db-hidden" id="file-submit" style="align-items:center; gap:12px; margin-top: 20px;">
             <button id="file-submit-btn" class="btn btn-primary btn-md" type="submit">Submit entry</button>
             <span id="file-submit-status" class="jo-db-help" style="margin-left:8px;"></span>
           </div>
@@ -499,7 +504,7 @@
                 <label for="re-conc">Concentration</label>
                 <div class="jo-db-row">
                   <div class="jo-db-col">
-                    <input id="re-conc" name="re_conc_value" class="jo-db-input" type="number" step="0.0001" placeholder="0.2" />
+                    <input id="re-conc" name="re_conc_value" class="jo-db-input" type="number" placeholder="0.2" step="any" />
                   </div>
                   <div class="jo-db-col">
                     <select id="re-conc-unit" name="re_conc_unit" class="jo-db-select">
@@ -512,7 +517,7 @@
                 </div>
                 <div class="jo-db-row" style="margin-bottom:0;">
                   <div class="jo-db-col">
-                    <input id="re-conc-upper" name="re_conc_value_upper" class="jo-db-input" type="number" step="0.0001" placeholder="0.4" />
+                    <input id="re-conc-upper" name="re_conc_value_upper" class="jo-db-input" type="number" placeholder="0.4" step="any" />
                   </div>
                   <div class="jo-db-col">
                     <input id="re-conc-note" name="re_conc_value_note" class="jo-db-input"
@@ -524,15 +529,15 @@
             <div class="jo-db-row">
               <div class="jo-db-col">
                 <label>Ω₂ (10⁻²⁰ cm²)</label>
-                <input id="omega2" name="omega2" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega2" name="omega2" class="jo-db-input" type="number" step="any" />
               </div>
               <div class="jo-db-col">
                 <label>Ω₄ (10⁻²⁰ cm²)</label>
-                <input id="omega4" name="omega4" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega4" name="omega4" class="jo-db-input" type="number" step="any" />
               </div>
               <div class="jo-db-col">
                 <label>Ω₆ (10⁻²⁰ cm²)</label>
-                <input id="omega6" name="omega6" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega6" name="omega6" class="jo-db-input" type="number" step="any" />
               </div>
             </div>
             <div class="jo-db-row">
@@ -544,15 +549,15 @@
             <div class="jo-db-row">
               <div class="jo-db-col">
                 <label>σ(Ω₂) (10⁻²⁰ cm²)</label>
-                <input id="omega2-error" name="omega2_error" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega2-error" name="omega2_error" class="jo-db-input" type="number" step="any" />
               </div>
               <div class="jo-db-col">
                 <label>σ(Ω₄) (10⁻²⁰ cm²)</label>
-                <input id="omega4-error" name="omega4_error" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega4-error" name="omega4_error" class="jo-db-input" type="number" step="any" />
               </div>
               <div class="jo-db-col">
                 <label>σ(Ω₆) (10⁻²⁰ cm²)</label>
-                <input id="omega6-error" name="omega6_error" class="jo-db-input" type="number" step="0.0001" />
+                <input id="omega6-error" name="omega6_error" class="jo-db-input" type="number" step="any" />
               </div>
             </div>
           </div>
@@ -757,10 +762,11 @@
                 <textarea id="notes" name="extra_notes" class="jo-db-textarea" placeholder="Table/Figure numbers, uncertainties, comments…"></textarea>
               </div>
             </div>
-            <div id="jo-add-status" style="margin-top:8px;font-size:13px;text-align:right;">⠀</div>
-            <div class="jo-db-form-footer">
+            <input type="hidden" id="is-revision-of-id" name="is_revision_of_id" />
+            <div class="jo-db-form-footer" style="align-items:center; gap:12px; margin-top: 20px;">
+              <button class="btn btn-primary btn-md" type="submit" id="form-submit-btn">Submit entry</button>
               <button class="btn btn-secondary btn-md" type="reset">Clear form</button>
-              <button class="btn btn-primary btn-md" type="submit">Submit entry</button>
+              <div id="jo-add-status" class="jo-db-help" style="margin-left:8px;">⠀</div>  
             </div>
           </div>
         </form>
@@ -778,6 +784,7 @@
       Works published using this LOMS online tool shall reference: J.Hrabovsky, P. Varak, R. Krystufek, LOMS.cz computational platform for high-throughput classical and combinatorial Judd-Ofelt analysis and rare-earth spectroscopy, Scientific Reports, 28945 (2025) DOI: <a href="https://doi.org/10.1038/s41598-025-13620-0" target="_blank">10.1038/s41598-025-13620-0</a>
     </p>
   </footer>
+  <script src="js/auth.js"></script>
   <script src="js/jo_form_ui.js"></script>
   <script src="js/jo_add_form_ajax.js"></script>
   <script src="js/jo_comp_grid.js"></script>
@@ -789,7 +796,7 @@
   <script src="js/jo_file_upload.js"></script>
   <script src="js/jo_doi_lookup.js"></script>
   <script src="js/jo_parent_pub_overlay.js"></script>
+  <script src="js/jo_request_revision.js"></script>
   <script src="js/menu.js"></script>
-  <script src="js/auth.js"></script>
 </body>
 </html>
