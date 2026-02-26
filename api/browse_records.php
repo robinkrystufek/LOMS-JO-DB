@@ -271,8 +271,6 @@ try {
     return [
       'jo_record_id' => $rid,
       'publication_id' => (int)$r['publication_id'],
-
-      // table row fields
       're_ion' => $r['re_ion'],
       'host_short' => $hostDetails,
       'composition_short' => $r['composition_text'],
@@ -283,13 +281,15 @@ try {
       'omega4_error' => $r['omega4_error'],
       'omega6_error' => $r['omega6_error'],
       'concentration' => $conc,
+      'concentration_lower' => $r['re_conc_value'] ?? '',
+      'concentration_upper' => $r['re_conc_value_upper'] ?? '',
+      'concentration_unit' => $r['re_conc_unit'] ?? '',
       'concentration_note' => $r['re_conc_value_note'] ?? '',
       'badges' => $badges,
       'badges_notes' => $badges_notes,
       'badges_states' => $badges_states,
       'has_density' => $r['has_density'],
       'density' => $r['density_g_cm3'],
-      // normalized composition
       'composition_components' => $componentsByRecord[$rid] ?? [],
       'sample_label' => $r['sample_label'] ?? '',
       'notes' => stripFilePathTag($r['extra_notes']) ?? '',
@@ -299,7 +299,6 @@ try {
       'pub_year' => $r['pub_year'] ?? '',
       'pub_journal' => $r['pub_journal'] ?? '',
       'pub_url' => $r['pub_url'] ?? '',
-      // details
       'details' => [
         'publication' => $pubLine,
         'contributor' => $r['contributor_info'] ?? '',

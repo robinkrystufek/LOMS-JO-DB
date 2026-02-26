@@ -120,4 +120,5 @@
   doiEl.addEventListener("blur", () => {
     lookupIfNeeded();
   });
+  window.joDoiLookup = lookupIfNeeded;
 })();

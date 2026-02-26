@@ -58,6 +58,20 @@
     inComp.focus();
     renderRules();
   }
+  function addRuleArgs(component, unit, value, op = null, reload = true) {
+    component = normalizeComponent(String(component ?? ''));
+    unit = String(unit ?? '');
+    op = (op == null || op === '') ? (inOp?.value || '>=') : String(op);
+    value = String(value ?? '');
+    if (!component || value === '') return false;
+    const key = `${component}||${op}||${value}||${unit}`;
+    const exists = rules.some(r => `${r.component}||${r.op}||${r.value}||${r.unit}` === key);
+    if (!exists) rules.push({ component, op, value, unit });
+    elPanel.classList.add('open');
+    elPanel.style.display = elPanel.classList.contains('open') ? 'block' : 'none';
+    renderRules(reload);
+    return !exists;
+  }
   function clearRules() {
     rules.length = 0;
     renderRules(true);
@@ -79,6 +93,7 @@
   window.__JO_ADV_RULES__ = {
     getRules: () => rules.slice(),
     clear: clearRules,
-    clearBackground: clearRulesBackground
+    clearBackground: clearRulesBackground,
+    addRule: addRuleArgs
   };
 })();

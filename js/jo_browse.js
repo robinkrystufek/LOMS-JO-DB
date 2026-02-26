@@ -1,3 +1,58 @@
+window.__RI_MAIN_BOOK_CACHE__ = window.__RI_MAIN_BOOK_CACHE__ || new Map();
+window.__RI_MAIN_BOOK_INFLIGHT__ = window.__RI_MAIN_BOOK_INFLIGHT__ || new Map();
+function setRiSpinner(slotEl) {
+  slotEl.innerHTML = `<i class="fa fa-spinner fa-spin" aria-label="Checking refractiveindex.info"></i>`;
+}
+function setRiHit(slotEl, url) {
+  slotEl.innerHTML =
+    `<a href="${esc(url)}" target="_blank" rel="noopener" title="Open refractiveindex.info record">
+      <img src="dist/refractiveindex.info.logo.png" alt="RI" class="ri-icon" />
+    </a>`;
+}
+function setRiEmpty(slotEl) {
+  slotEl.innerHTML = '';
+}
+async function lookupRiMainBook(component) {
+  const key = String(component || '').trim();
+  if (!key) return null;
+  if (window.__RI_MAIN_BOOK_CACHE__.has(key)) {
+    return window.__RI_MAIN_BOOK_CACHE__.get(key);
+  }
+  if (window.__RI_MAIN_BOOK_INFLIGHT__.has(key)) {
+    return window.__RI_MAIN_BOOK_INFLIGHT__.get(key);
+  }
+  const p = (async () => {
+    try {
+      const url = `api/lookup_refractive_index_info.php?component=${encodeURIComponent(key)}`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const data = await res.json().catch(() => null);
+      const hitUrl = (data && data.ok && data.found && data.url) ? String(data.url) : null;
+      window.__RI_MAIN_BOOK_CACHE__.set(key, hitUrl);
+      return hitUrl;
+    } catch {
+      window.__RI_MAIN_BOOK_CACHE__.set(key, null);
+      return null;
+    } finally {
+      window.__RI_MAIN_BOOK_INFLIGHT__.delete(key);
+    }
+  })();
+  window.__RI_MAIN_BOOK_INFLIGHT__.set(key, p);
+  return p;
+}
+function hydrateRiIcons(containerEl) {
+  if (!containerEl) return;
+  const slots = Array.from(containerEl.querySelectorAll('.ri-lookup[data-component]'));
+  if (!slots.length) return;
+  slots.forEach(async (slot) => {
+    if (slot.dataset.riDone === '1') return;
+    const comp = slot.getAttribute('data-component') || '';
+    setRiSpinner(slot);
+    const hitUrl = await lookupRiMainBook(comp);
+    if (hitUrl) setRiHit(slot, hitUrl);
+    else setRiEmpty(slot);
+    slot.dataset.riDone = '1';
+  });
+}
 let sortBy = 'id';
 let sortDir = 'desc';
 function updateSortIndicators() {
@@ -54,6 +109,8 @@ function fmtNum(x) {
 function render(items) {
   tbody.innerHTML = '';
   items.forEach((it, idx) => {
+    window.__JO_RECORD_CACHE__ = window.__JO_RECORD_CACHE__ || {};
+    window.__JO_RECORD_CACHE__[it.jo_record_id] = it;
     const detailsId = `details-${it.jo_record_id}`;
     const foregroundColors = ["#A33A3A", "#8A6D1F", "#2F7A4A", "#2F7A4A"];
     const backgroundColors = ["#FDECEC", "#FFF8E1", "#EAF7EF", "#EAF7EF"];
@@ -86,9 +143,37 @@ function render(items) {
     const det = document.createElement('tr');
     det.id = detailsId;
     det.className = 'jo-db-details-row jo-db-hidden';
-    const compRows = (d.composition_components || []).map(c =>
-      `${c.component} ${(isFinite(c.value) ? Number(c.value).toPrecision(3) : '')} ${c.unit ?? ''}`.trim()
-      ).join('; ');
+    const compRows = (d.composition_components || []).map(c => {
+      const value = isFinite(c.value) ? Number(c.value).toPrecision(3) : '';
+      const unit  = c.unit ? ` ${esc(c.unit)}` : '';
+      return `
+        <tr>
+          <td>
+            <button class="comp-filter-btn" data-component="${esc(c.component)}" title="Search for entries containing this component. Shift+click to add multiple components">
+              ${esc(c.component)}
+              <i class="fa fa-filter"></i>
+            </button>
+          </td>
+          <td style="text-align:right">
+            <button class="comp-filter-btn" data-component="${esc(c.component)}" data-concentration="${value}" data-unit="${esc(c.unit)}" title="Search for entries containing this component in the same concentration">
+              ${value}${unit}
+              <i class="fa fa-filter"></i>
+            </button>
+          </td>
+          <td>
+            <span class="ri-lookup" data-component="${normalizeSubscripts(esc(c.component))}" aria-hidden="true"></span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    const compTable = `
+      <table class="composition-detail-table">
+        <tbody>
+          ${compRows}
+        </tbody>
+      </table>
+    `;      
     let lomsHtml = '';
     if (d.loms_file_url) {
     lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
@@ -105,7 +190,7 @@ function render(items) {
             </dd>
             <dt>Density</dt>
             <dd>
-              ${it.has_density == 2 ? esc(it.density) + ' g/cm³' : it.has_density == 1 ? '<i class=\'fa fa-question\'></i>' : '<i class=\'fa fa-times\'></i>'}
+              ${it.has_density == 2 ? esc(fmtNum(it.density)) + ' g/cm³' : it.has_density == 1 ? '<i class=\'fa fa-question\'></i>' : '<i class=\'fa fa-times\'></i>'}
             </dd>
             <dt>Host</dt>
             <dd>
@@ -116,33 +201,6 @@ function render(items) {
               ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> (Single value) ',3:'<i class=\'fa fa-check\'></i> (Dispersion relation) '}[it.badges_states[0]] ?? '')}
               ${esc(it.badges_notes[0]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[0])+'\'></i>' : ''}
             </dd>
-            <dt>Composition</dt>
-            <dd>
-              ${esc(d.composition || it.composition)}
-            </dd>
-            <dt>Combinatorial JO analysis</dt>
-            <dd>
-              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[1]] ?? '')}
-              ${esc(it.badges_notes[1]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[1])+'\'></i>' : ''}
-            </dd>
-            <dt>Concentration (${esc(it.re_ion)})</dt>
-            <dd>
-              ${esc(it.concentration)} ${esc(it.concentration_note) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}
-            </dd>
-            <dt>σ,F,S included</dt>
-            <dd>
-              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[2]] ?? '')}
-              ${esc(it.badges_notes[2]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[2])+'\'></i>' : ''}
-            </dd>
-            <dt>Normalized composition</dt>
-            <dd>
-              ${esc(compRows || '')}
-            </dd>
-            <dt>Magnetic dipole correction</dt>
-            <dd>
-              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[3]] ?? '')}
-              ${esc(it.badges_notes[3]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[3])+'\'></i>' : ''}
-            </dd>
             <dt>JO parameters</dt>
             <dd>
               Ω₂ = ${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''},
@@ -150,16 +208,44 @@ function render(items) {
               Ω₆ = ${esc(fmtNum(it.omega6))}${it.omega6_error != null ? ` ± ${esc(fmtNum(it.omega6_error))}` : ''}
               (${esc(d.jo_parameters?.units || '10⁻²⁰ cm²')})
             </dd>
-            <dt>Reduced elements included</dt>
+            <dt>Combinatorial JO analysis</dt>
             <dd>
-              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[4]] ?? '')}
-              ${esc(it.badges_notes[4]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[4])+'\'></i>' : ''}
-            </dd>                    
+              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[1]] ?? '')}
+              ${esc(it.badges_notes[1]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[1])+'\'></i>' : ''}
+            </dd>
             <dt>JO recalculated by LOMS</dt>
             <dd>
               ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[5]] ?? '')}
               ${(lomsHtml || '')}
               ${esc(it.badges_notes[5]) != "" ? ' <i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[5])+'\'></i>' : ''}
+            </dd>
+            <dt>σ,F,S included</dt>
+            <dd>
+              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[2]] ?? '')}
+              ${esc(it.badges_notes[2]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[2])+'\'></i>' : ''}
+            </dd>
+            <dt>Concentration (${esc(it.re_ion)})</dt>
+            <dd>
+              ${esc(it.concentration)} ${esc(it.concentration_note) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}
+            </dd>
+
+            <dt>Magnetic dipole correction</dt>
+            <dd>
+              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[3]] ?? '')}
+              ${esc(it.badges_notes[3]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[3])+'\'></i>' : ''}
+            </dd>
+            <dt>Composition</dt>
+            <dd>
+              ${esc(d.composition || it.composition)}
+            </dd>
+            <dt>Reduced elements included</dt>
+            <dd>
+              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[4]] ?? '')}
+              ${esc(it.badges_notes[4]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[4])+'\'></i>' : ''}
+            </dd>                    
+            <dt>Normalized composition</dt>
+            <dd>
+              ${compTable || ''}
             </dd>
           </dl>
           <h3 style="margin-top: 0.5em;">Parent publication</h3>
@@ -197,6 +283,7 @@ function render(items) {
             <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">
               <i class="fa fa-download"></i>&nbsp;&nbsp;Download submission file 
             </button>
+            <button type="button" data-id="${esc(it.jo_record_id)}" class="btn btn-secondary btn-sm jo-request-revision"><i class="fa fa-edit"></i>&nbsp;&nbsp;Request revision</button>
           </div>
         </div>
       </td>
@@ -233,6 +320,22 @@ function render(items) {
     }, 250);
   });
 }
+function normalizeSubscripts(str) {
+  if (!str) return str;
+  const map = {
+    '₀': '0',
+    '₁': '1',
+    '₂': '2',
+    '₃': '3',
+    '₄': '4',
+    '₅': '5',
+    '₆': '6',
+    '₇': '7',
+    '₈': '8',
+    '₉': '9'
+  };
+  return str.replace(/[₀-₉]/g, ch => map[ch] || ch);
+}
 function toggleDetailsFor(btn) {
   const targetId  = btn.getAttribute('data-target');
   const targetRow = document.getElementById(targetId);
@@ -252,23 +355,28 @@ function toggleDetailsFor(btn) {
     const open = !targetRow.classList.contains('jo-db-hidden');
     i.classList.toggle('fa-search-plus', !open);
     i.classList.toggle('fa-search-minus', open);
+    if (open) hydrateRiIcons(targetRow);
   }
 }
 function renderPager(page, totalPages, total) {
   countEl.textContent = `${total} entries`;
   setResultsLoading(false);
   const pages = [];
-  const start = Math.max(1, page - 1);
-  const end = Math.min(totalPages, page + 1);
+  const start = Math.max(1, page - 2);
+  const end = Math.min(totalPages, page + 2);
   for (let p = start; p <= end; p++) pages.push(p);
   pager.innerHTML = `
-    <button class="btn btn-secondary btn-sm" ${page <= 1 ? 'disabled' : ''} data-go="${page-1}">Prev</button>
+    <button class="btn btn-secondary btn-sm" ${page <= 1 ? 'disabled' : ''} data-go="${page-1}"><i class="fa fa-caret-left"></i></button>
+    ${start > 1 ? `<button class="btn btn-secondary btn-sm" data-go="1">1</button>` : ''}
+    ${start > 2 ? `<span class="pager-ellipsis">…</span>` : ''}
     ${pages.map(p => `
       <button class="btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm" data-go="${p}">
         ${p}
       </button>
     `).join('')}
-    <button class="btn btn-secondary btn-sm" ${page >= totalPages ? 'disabled' : ''} data-go="${page+1}">Next</button>
+    ${totalPages > (end+1)? `<span class="pager-ellipsis">…</span>` : ''}
+    ${totalPages > end? `<button class="btn btn-secondary btn-sm" data-go="${totalPages}">${totalPages}</button>` : ''}
+    <button class="btn btn-secondary btn-sm" ${page >= totalPages ? 'disabled' : ''} data-go="${page+1}"><i class="fa fa-caret-right"></i></button>
   `;
   pager.querySelectorAll('button[data-go]').forEach(b => {
     b.addEventListener('click', () => {
@@ -376,9 +484,48 @@ function findEntriesByParentDOI(doi) {
     load(1);
   }, 500);
 }
+let findCompThrottleTimer = null;
+let lastComp = null;
+function findEntriesByComponent(component) {
+  lastComp = component;
+  if (findCompThrottleTimer) return; 
+  findCompThrottleTimer = setTimeout(() => {
+    findCompThrottleTimer = null;
+    resetSearchInput(false);
+    const input = document.getElementById('filter-composition-text');
+    if (input) input.value = lastComp || '';
+    load(1);
+  }, 500);
+}
+function addComponentToMultiFilter(component, reload = false, concentration = '', unit = '') {
+  if(concentration && unit) {
+    window.__JO_ADV_RULES__?.clearBackground();
+    window.__JO_ADV_RULES__?.addRule(component, unit, concentration, '=', true);
+  }
+  else {
+    if(reload) window.__JO_ADV_RULES__?.clearBackground();
+    window.__JO_ADV_RULES__?.addRule(component, 'mol%', '0', '>', reload);
+  }
+}
+
 function exportCitation(id, format) {
   window.location.href = `api/export_entry.php?type=citation&id=${encodeURIComponent(id)}&format=${encodeURIComponent(format)}`;
 }
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.comp-filter-btn');
+  if (!btn) return;
+  const comp = btn.dataset.component;
+  if(btn.dataset.concentration && btn.dataset.unit) {
+    addComponentToMultiFilter(comp, true, btn.dataset.concentration, btn.dataset.unit);
+  }
+  else {
+    if (e.shiftKey) {
+      addComponentToMultiFilter(comp, false);
+    } else {
+      addComponentToMultiFilter(comp, true);
+    }
+  }
+});
 document.addEventListener("click", e => {
   const toggle = e.target.closest(".btn-split-toggle");
   document.querySelectorAll(".btn-split").forEach(el =>

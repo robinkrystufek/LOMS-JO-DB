@@ -1,3 +1,39 @@
+var userLoggedIn = false;
+function updateAddTabLock(userLoggedIn) {
+  const addTab = document.getElementById('tab-add-btn');
+  if (!addTab) return;
+  if (!userLoggedIn) {
+    addTab.classList.add('locked');
+    addTab.dataset.tooltip = "You need to be registered to use this feature";
+    if (!addTab.querySelector('i')) {
+      const icon = document.createElement('i');
+      icon.className = 'bx bx-lock-alt';
+      addTab.appendChild(icon);
+    }
+  } 
+  else {
+    addTab.classList.remove('locked');
+    addTab.removeAttribute('data-tooltip');
+    const icon = addTab.querySelector('i');
+    if (icon) icon.remove();
+  }
+}
+function updateRevisionButtonsLock(userLoggedIn) {
+  const buttons = document.querySelectorAll('.jo-request-revision');
+  if (!buttons.length) return;
+  buttons.forEach(btn => {
+    if (!userLoggedIn) {
+      btn.disabled = true;
+      btn.classList.add('locked', 'tooltip-icon');
+      btn.dataset.tooltip = "You need to be registered to use this feature";
+    } 
+    else {
+      btn.disabled = false;
+      btn.classList.remove('locked', 'tooltip-icon');
+      btn.removeAttribute('data-tooltip');
+    }
+  });
+}
 function toggleSignIn() {
   if (firebase.auth().currentUser) {
     firebase.auth().signOut();
@@ -296,6 +332,7 @@ function initApp() {
 function initUserInfo() {
   const user = firebase.auth().currentUser;
   updateAddTabLock(user);
+  updateRevisionButtonsLock(user);
   const setVal = (id, v) => {
     const el = document.getElementById(id);
     if (el) el.value = v;

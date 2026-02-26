@@ -42,6 +42,7 @@ if ($doi !== null) {
     $doi = normalize_doi($doi);
     $lookup = doi_lookup_fetch($doi);
     if (is_array($lookup)) {
+      $article_metadata = json_encode((object)($lookup['raw'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
       $alex_refs = json_encode((object)($lookup['alex_refs'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
       $alex_citations = json_encode((object)($lookup['alex_citations'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
       $alex_id = as_trimmed($lookup['alex_id'] ?? null);
@@ -167,6 +168,12 @@ $mag_dipole_note        = as_trimmed($get('mag_dipole_note'));
 $reduced_element_note   = as_trimmed($get('reduced_element_note'));
 $recalculated_loms_note = as_trimmed($get('jo_source_note'));
 $extra_notes = as_trimmed($get('extra_notes'));
+$is_revision_of_id = as_trimmed($get('is_revision_of_id'));
+$submission_status = 'pending';
+if($is_revision_of_id !== null) {
+  $is_revision_of_id = to_int($is_revision_of_id);
+  if ($is_revision_of_id !== null && $is_revision_of_id > 0) $submission_status = 'pending_revision';
+}
 if ($extra_notes === null) $extra_notes = as_trimmed($get('notes'));
 
 if ($contributor_info == "" || $contributor_info === null) json_fail('Contributor info is required.');
@@ -289,7 +296,6 @@ try {
       density_g_cm3,
       extra_notes,
       is_contributor_author,
-      review_status,
       refractive_index_option,
       combinatorial_jo_option,
       sigma_f_s_option,
@@ -301,7 +307,9 @@ try {
       sigma_f_s_note,
       mag_dipole_note,
       reduced_element_note,
-      recalculated_loms_note
+      recalculated_loms_note,
+      is_revision_of_id,
+      review_status
     ) VALUES (
       :publication_id,
       :contributor_info,
@@ -323,7 +331,6 @@ try {
       :density_g_cm3,
       :extra_notes,
       :is_contributor_author,
-      'pending',
       :refractive_index_option,
       :combinatorial_jo_option,
       :sigma_f_s_option,
@@ -335,49 +342,46 @@ try {
       :sigma_f_s_note,
       :mag_dipole_note,
       :reduced_element_note,
-      :recalculated_loms_note
+      :recalculated_loms_note,
+      :is_revision_of_id,
+      :review_status
     )
   ");
   $stmt->execute([
     ':publication_id'            => $publication_id,
     ':contributor_info'          => $contributor_info,
     ':re_ion'                    => $re_ion,
-  
     ':re_conc_value'             => $re_conc_value,
     ':re_conc_value_upper'       => $re_conc_value_upper,
     ':re_conc_value_note'        => $re_conc_value_note,
     ':re_conc_unit'              => $re_conc_unit,
-  
     ':sample_label'              => $sample_label,
     ':host_type'                 => $host_type,
     ':composition_text'          => $composition_text,
-  
     ':omega2'                    => $omega2,
     ':omega4'                    => $omega4,
     ':omega6'                    => $omega6,
     ':omega2_error'              => $omega2_error,
     ':omega4_error'              => $omega4_error,
     ':omega6_error'              => $omega6_error,
-  
     ':has_density'               => $has_density,
     ':density_g_cm3'             => $density_g_cm3,
-  
     ':extra_notes'               => $extra_notes,
     ':is_contributor_author'     => $is_contributor_author,
-  
     ':refractive_index_option'   => $refractive_index_option,
     ':combinatorial_jo_option'   => $combinatorial_jo_option,
     ':sigma_f_s_option'          => $sigma_f_s_option,
     ':mag_dipole_option'         => $mag_dipole_option,
     ':reduced_element_option'    => $reduced_element_option,
     ':recalculated_loms_option'  => $recalculated_loms_option,
-  
     ':refractive_index_note'     => $refractive_index_note,
     ':combinatorial_jo_note'     => $combinatorial_jo_note,
     ':sigma_f_s_note'            => $sigma_f_s_note,
     ':mag_dipole_note'           => $mag_dipole_note,
     ':reduced_element_note'      => $reduced_element_note,
     ':recalculated_loms_note'    => $recalculated_loms_note,
+    ':is_revision_of_id'         => $is_revision_of_id,
+    ':review_status'             => $submission_status,
   ]);
   $jo_record_id = (int)$pdo->lastInsertId();
   if ($jo_record_id <= 0) json_fail('Failed to create JO record.', 500);
