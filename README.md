@@ -35,7 +35,7 @@ LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and
 - Boxicons — https://github.com/atisawd/boxicons
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
 
-This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry.
+This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry. Component entries are cross-checked against the [refractiveindex.info][refractive-index-info] database, maintained by Mikhail Polyanskiy, and provide direct links to the corresponding records.
 
 ## License
 
@@ -46,3 +46,4 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 [cc-by-nc-nd]: https://creativecommons.org/licenses/by-nc-nd/4.0/
 [cc-by-nc-nd-image]: https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png
 [cc-by-nc-nd-shield]: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
+[refractive-index-info]: https://github.com/polyanskiy/refractiveindex.info-database
