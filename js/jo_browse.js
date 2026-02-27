@@ -106,6 +106,20 @@ function fmtNum(x) {
   if (!s.includes('.')) return s;
   return s.replace(/\.?0+$/, '');
 }
+function compositionShorthand(components) {
+  if (!Array.isArray(components) || !components.length) return '';
+  const parts = [];
+  let unit = null;
+  for (const c of components) {
+    if (!isFinite(c.value) || !c.component) continue;
+    const value = Number(c.value).toPrecision(3);
+    parts.push(`${value} ${c.component}`);
+    if (!unit && c.unit) unit = c.unit;
+  }
+  if (!parts.length) return '';
+  const body = parts.join('–');
+  return unit ? `${body} (${unit})` : body;
+}
 function render(items) {
   tbody.innerHTML = '';
   items.forEach((it, idx) => {
@@ -127,8 +141,8 @@ function render(items) {
     row.innerHTML = `
     <td>${esc(it.jo_record_id)}</td>
       <td>${esc(it.re_ion)}</td>
-      <td>${esc(it.concentration)}</td>
-      <td>${esc(it.details.composition || it.composition)}</td>
+      <td style="overflow: visible">${esc(it.concentration)}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
+      <td>${esc(compositionShorthand(it.details.composition_components) || it.details.composition || it.composition)}</td>
       <td>${esc(it.details.host || it.host)}</td>
       <td>${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''}</td>
       <td>${esc(fmtNum(it.omega4))}${it.omega4_error != null ? ` ± ${esc(fmtNum(it.omega4_error))}` : ''}</td>
@@ -234,7 +248,7 @@ function render(items) {
               ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[3]] ?? '')}
               ${esc(it.badges_notes[3]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[3])+'\'></i>' : ''}
             </dd>
-            <dt>Composition</dt>
+            <dt>Composition (as reported)</dt>
             <dd>
               ${esc(d.composition || it.composition)}
             </dd>
@@ -505,7 +519,7 @@ function addComponentToMultiFilter(component, reload = false, concentration = ''
   }
   else {
     if(reload) window.__JO_ADV_RULES__?.clearBackground();
-    window.__JO_ADV_RULES__?.addRule(component, 'mol%', '0', '>', reload);
+    window.__JO_ADV_RULES__?.addRule(component, 'any%', '0', '>', reload);
   }
 }
 
