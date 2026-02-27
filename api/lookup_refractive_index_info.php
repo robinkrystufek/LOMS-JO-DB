@@ -17,7 +17,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 const AI_TREE_URL = 'https://refractiveindex.info/include/ai-tree.php';
 const CANON_BASE  = 'https://refractiveindex.info/';
-const CACHE_DIR   = __DIR__ . '/cache';
+const CACHE_DIR = __DIR__ . '/../cache';
 const CACHE_FILE  = CACHE_DIR . '/refractiveindex_ai_tree.json';
 const LOCK_FILE   = CACHE_DIR . '/refractiveindex_ai_tree.lock';
 const CACHE_TTL_SECONDS = 12 * 60 * 60;

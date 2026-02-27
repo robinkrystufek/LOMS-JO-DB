@@ -100,9 +100,9 @@
         return { overlay, body, closeBtn: top.querySelector("#jo-alex-close-btn") };
     }
     function renderSummary(row, oaWork, crMsg, oaCitations, meta = {}) {
-        const title = (oaWork?.title || row.title || "(no title)").replace(/<[^>]+>/g, '');
-        const year = oaWork?.publication_year || row.year || "";
-        const journal = oaWork?.primary_location?.source?.display_name || row.journal || "";
+        const title = (row.title || "(no title)").replace(/<[^>]+>/g, '');
+        const year = row.year || oaWork?.publication_year || "";
+        const journal = row.journal || oaWork?.primary_location?.source?.display_name || "";
         const doi = (oaWork?.doi || row.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
         const doiUrl = doi ? doiToUrl(doi) : (row.url || "");
         const type = oaWork?.type ? oaWork.type.replace(/-/g, " ") : "";
@@ -112,16 +112,17 @@
         const refCountOA = oaWork?.referenced_works_count ?? (Array.isArray(oaWork?.referenced_works) ? oaWork.referenced_works.length : null);
         const refCountCR = crMsg?.["reference-count"] ?? (Array.isArray(crMsg?.reference) ? crMsg.reference.length : null);
         const citingCount = oaCitations?.total ?? (Array.isArray(oaCitations?.items) ? oaCitations.items.length : null);
-        const joCount = Number.isFinite(Number(meta.jo_records_count_for_doi))
-        ? Number(meta.jo_records_count_for_doi)
-        : null;
-
+        const joCount = Number.isFinite(Number(meta.jo_records_count_for_doi)) ? Number(meta.jo_records_count_for_doi) : null;
         const authors = (() => {
-            const a = oaWork?.authorships;
-            if (Array.isArray(a) && a.length) {
-                return a.map(x => x?.author?.display_name).filter(Boolean).join(", ");
+            if(typeof row.authors === "string" && row.authors.trim() !== "") {
+                return row.authors;
             }
-            return row.authors || "";
+            else {
+                const a = oaWork?.authorships;
+                if (Array.isArray(a) && a.length) {
+                    return a.map(x => x?.author?.display_name).filter(Boolean).join(", ");
+                }
+            }
         })();
       
         return `
@@ -262,32 +263,32 @@
         });
         items.sort((a, b) => (b.jo - a.jo) || (a.i - b.i));
         const rows = items.map(({ it }) => {
-        const journal = it.journal || "";
-        const title = (it.title || "").replace(/<[^>]+>/g, '');
-        const year = it.year || "";
-        const authors = it.authors || "";
-        const firstSurname = firstSurnameFromAuthors(authors);
-        const doi = it.doi || "";
-        const headline = [firstSurname, year, (title || journal)].filter(Boolean).join(" · ") || "(no title)";
-        const subline = journal + ", " + it.biblio || "";
-        const oaUrl = it.alex_id ? openalexIdToUrl(it.alex_id) : "";
-        const doiKey = normalizeDoiKey(doi);
-        const hit = doiKey ? byDoi[doiKey] : null;
-        if (hit && Number(hit.jo_count || 0) > 0) {
+            const journal = it.journal || "";
+            const title = (it.title || "").replace(/<[^>]+>/g, '');
+            const year = it.year || "";
+            const authors = it.authors || "";
+            const firstSurname = firstSurnameFromAuthors(authors);
+            const doi = it.doi || "";
+            const headline = [firstSurname, year, (title || journal)].filter(Boolean).join(" · ") || "(no title)";
+            const subline = journal + ", " + it.biblio || "";
+            const oaUrl = it.alex_id ? openalexIdToUrl(it.alex_id) : "";
+            const doiKey = normalizeDoiKey(doi);
+            const hit = doiKey ? byDoi[doiKey] : null;
+            if (hit && Number(hit.jo_count || 0) > 0) {
+                return renderPubCard({
+                    headline,
+                    subline,
+                    doi,
+                    extraLink: oaUrl ? { label: "OpenAlex", url: oaUrl } : null,
+                    badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255); padding: 1px 7px; margin-right: 6px;" title="Show entries from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
+                });
+            }
             return renderPubCard({
                 headline,
                 subline,
                 doi,
-                extraLink: oaUrl ? { label: "OpenAlex", url: oaUrl } : null,
-                badgeInsert: `<span style="border: 1px solid rgb(47, 111, 219); background: rgb(47, 111, 219); color: rgb(255, 255, 255); padding: 1px 7px; margin-right: 6px;" title="Show entries from this publication" class="jo-doi-hit jo-db-badge" data-jo-doi="${esc(hit.doi)}"onmouseover="this.style.background='#255ac0'" onmouseout="this.style.background='#2F6FDB'" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'"><b>JO records</b>: ${esc(hit.jo_count)}</span>`
+                extraLink: oaUrl ? { label: "OpenAlex", url: oaUrl } : null
             });
-        }
-        return renderPubCard({
-            headline,
-            subline,
-            doi,
-            extraLink: oaUrl ? { label: "OpenAlex", url: oaUrl } : null
-        });
         }).join("");
         return `<div style="display:grid; gap:10px;">${rows}</div>`;
     }

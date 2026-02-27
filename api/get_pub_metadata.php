@@ -23,8 +23,7 @@ function normalize_doi(string $s): string {
 }
 
 $doi = isset($_GET['doi']) ? normalize_doi((string)$_GET['doi']) : '';
-$publication_id = isset($_GET['publication_id']) ? (int)$_GET['publication_id'] : 0;
-if ($doi === '' && $publication_id <= 0) {
+if ($doi === '') {
   respond(400, ['ok' => false, 'error' => 'Missing parameter: doi or publication_id.']);
 }
 
@@ -40,7 +39,6 @@ try {
     ]
   );
   $params[':doi'] = $doi;
-  $whereSql = $where ? ('WHERE ' . implode(' OR ', $where)) : '';
   $sql = "SELECT * FROM publications WHERE doi = :doi ORDER BY id DESC LIMIT 1";
   $st = $pdo->prepare($sql);
   $st->execute($params);
@@ -54,34 +52,34 @@ try {
   }
   $joCount = null;
   try {
-  $doiForCount = $doi !== '' ? $doi : (string)($row['doi'] ?? '');
-  if ($doiForCount !== '') {
-    $st2 = $pdo->prepare("
-    SELECT COUNT(*) AS c
-    FROM jo_records r
-    JOIN publications p ON p.id = r.publication_id
-    WHERE p.doi = :doi AND r.review_status = 'approved'
-    ");
-    $st2->execute([':doi' => $doiForCount]);
-    $joCount = (int)($st2->fetchColumn() ?? 0);
-  }
-  } catch (Throwable $e) {
+    if ($doi !== '') {
+      $st2 = $pdo->prepare("
+        SELECT COUNT(*) AS c
+        FROM jo_records r
+        JOIN publications p ON p.id = r.publication_id
+        WHERE p.doi = :doi AND r.review_status = 'approved'
+      ");
+      $st2->execute([':doi' => $doi]);
+      $joCount = (int)($st2->fetchColumn() ?? 0);
+    }
+  } 
+  catch (Throwable $e) {
     respond(500, ['ok' => false, 'error' => 'Server error: ' . $e->getMessage()]);
   }
   $meta = [
-    'source' => $row['source'] ?? ($row['provider'] ?? null),
     'updated_at' => $row['updated_at'] ?? ($row['created_at'] ?? null),
     'count' => is_array($refs) ? count($refs) : null,
     'jo_records_count_for_doi' => $joCount
   ];
   respond(200, [
     'ok' => true,
-    'doi' => $doi !== '' ? $doi : ($row['doi'] ?? ($row['work_doi'] ?? '')),
-    'publication_id' => $publication_id > 0 ? $publication_id : ($row['publication_id'] ?? null),
+    'doi' => ($row['doi'] ?? null),
+    'publication_id' => ($row['publication_id'] ?? null),
     'meta' => $meta,
     'refs' => $refs,
     'raw_row' => $row,
   ]);
-} catch (Throwable $e) {
+} 
+catch (Throwable $e) {
   respond(500, ['ok' => false, 'error' => 'Server error: ' . $e->getMessage()]);
 }
