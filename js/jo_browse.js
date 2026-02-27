@@ -179,7 +179,7 @@ function render(items) {
     lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
     }
     det.innerHTML = `
-      <td colspan="10">
+      <td colspan="10" style="overflow: visible;">
         <div class="jo-db-details">
           <h3>Record details – ${esc(it.re_ion)} in ${esc(d.host)}</h3>
           <dl>
@@ -449,6 +449,7 @@ function resetSearchInput(reload = true) {
   c?.querySelectorAll(".jo-db-badge").forEach(b => applyBadgeState(b, -1));
   document.getElementById('filter-pub-doi').value = '';
   document.getElementById('filter-pub-title').value = '';
+  document.getElementById('filter-pub-author').value = '';
   document.getElementById('filter-re-ion').value = '';
   document.getElementById('filter-host-type').value = '';
   document.getElementById('adv-component').value = '';

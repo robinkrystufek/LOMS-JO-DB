@@ -153,7 +153,6 @@
       const f = getFilters();
       Object.entries(f).forEach(([k,v]) => {
         if (v === null || v === undefined) return;
-        // skip empty strings and 0 (unless you want explicit 0)
         if (typeof v === 'string' && v.trim() === '') return;
         if (typeof v === 'number' && v === 0) return;
         params.set(k, String(v));
@@ -165,10 +164,6 @@
       params.append('comp_value[]', r.value);
       params.append('comp_unit[]', r.unit);
     });
-    const doi = document.getElementById('filter-pub-doi')?.value || '';
-    if (doi) params.set('pub_doi_q', doi);
-    const title = document.getElementById('filter-pub-title')?.value || '';
-    if (doi) params.set('pub_title_q', doi);
     const url = `api/export_csv.php?${params.toString()}`;
     window.location.href = url;
   });
