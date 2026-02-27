@@ -17,6 +17,23 @@ function respond(int $code, array $payload): void {
   echo json_encode($payload, JSON_UNESCAPED_UNICODE);
   exit;
 }
+function unicode_superscript($n) {
+  $map = ['0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴','5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'];
+  return strtr((string)$n, $map);
+}
+function format_value($val) {
+  if (!is_numeric($val)) return $val;
+  $val = (float)$val;
+  if (abs($val) >= 1000) {
+    $exp = floor(log10(abs($val)));
+    $mant = $val / (10 ** $exp);
+    $mantStr = rtrim(rtrim(number_format($mant, 3, '.', ''), '0'), '.');
+    return $mantStr . ' × 10' . unicode_superscript($exp);
+  }
+  $v = (string)$val;
+  if (str_contains($v, '.')) $v = rtrim(rtrim($v, '0'), '.');
+  return $v;
+}
 
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 50;
@@ -224,15 +241,13 @@ try {
     );
     $conc = '';
     if ($r['re_conc_value'] !== null && $r['re_conc_value'] !== '') {
-      $v = (string)$r['re_conc_value'];
-      if (str_contains($v, '.')) $v = rtrim(rtrim($v, '0'), '.');
+      $v = format_value($r['re_conc_value']);
       $range = $v;
       if ($r['re_conc_value_upper'] !== null && $r['re_conc_value_upper'] !== '') {
-        $vu = (string)$r['re_conc_value_upper'];
-        if (str_contains($vu, '.')) $vu = rtrim(rtrim($vu, '0'), '.');
+        $vu = format_value($r['re_conc_value_upper']);
         $range .= '–' . $vu;
       }
-      $conc = trim($range . ' ' . ($r['re_conc_unit'] ?? ''));
+      $conc = trim($range . ' ' . str_replace("ions/cm3","ions/cm³",$r['re_conc_unit'] ?? ''));
     }
 
     $badges = ["n","C-JO","σFS","MD","RME","LOMS","ρ"];

@@ -108,15 +108,30 @@ function fmtNum(x) {
 }
 function compositionShorthand(components) {
   if (!Array.isArray(components) || !components.length) return '';
-  const parts = [];
-  let unit = null;
-  for (const c of components) {
-    if (!isFinite(c.value) || !c.component) continue;
-    const value = Number(c.value).toPrecision(3);
-    parts.push(`${value} ${c.component}`);
-    if (!unit && c.unit) unit = c.unit;
+  const valid = components.filter(c => isFinite(c.value) && c.component);
+  if (!valid.length) return '';
+  const EPS = 1e-9;
+  const allIntegers = valid.every(c => Math.abs(Number(c.value) - Math.round(Number(c.value))) < EPS);
+  let precision;
+  if (allIntegers) {
+    precision = 0;
+  } 
+  else {
+    function estimateDecimals(x) {
+      const s = Number(x).toPrecision(12);
+      const m = s.match(/\.(\d+?)0*$/);
+      return m ? m[1].length : 0;
+    }
+    const decs = valid.map(c => estimateDecimals(c.value));
+    precision = Math.min(...decs);
+    if (precision === 0 && decs.some(d => d > 0)) precision = 1;
+    precision = Math.min(precision, 3);
   }
-  if (!parts.length) return '';
+  const parts = valid.map(c => {
+    const value = Number(c.value).toFixed(precision);
+    return `${value} ${c.component}`;
+  });
+  const unit = valid.find(c => c.unit)?.unit || '';
   const body = parts.join('–');
   return unit ? `${body} (${unit})` : body;
 }
@@ -141,7 +156,7 @@ function render(items) {
     row.innerHTML = `
     <td>${esc(it.jo_record_id)}</td>
       <td>${esc(it.re_ion)}</td>
-      <td style="overflow: visible">${esc(it.concentration)}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
+      <td${esc(it.concentration_note) != "" && !it.concentration ? ' style="overflow: visible"' : ''}>${esc(it.concentration)}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
       <td>${esc(compositionShorthand(it.details.composition_components) || it.details.composition || it.composition)}</td>
       <td>${esc(it.details.host || it.host)}</td>
       <td>${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''}</td>
@@ -152,6 +167,7 @@ function render(items) {
         <button class="btn btn-secondary btn-sm jo-db-view-btn" type="button" data-target="${esc(detailsId)}" aria-label="Entry details" title="Entry details"><i class="fa fa-search-plus"></i></button>
       </td>
     `;
+    row.style.cursor = 'pointer';
     tbody.appendChild(row);
     const d = it.details || {};
     const det = document.createElement('tr');
@@ -291,11 +307,20 @@ function render(items) {
                   <button onclick="exportCitation(${esc(it.jo_record_id)}, 'apa')">APA</button>
                 </div>
               </div>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">
-              <i class="fa fa-download"></i>&nbsp;&nbsp;Export as CSV 
-            </button>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">
-              <i class="fa fa-download"></i>&nbsp;&nbsp;Download submission file 
+              <div class="btn-split">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">
+                  <i class="fa fa-download"></i>&nbsp;&nbsp;Export data
+                </button>
+                <button class="btn btn-secondary btn-sm btn-split-toggle" type="button" aria-label="Select format">
+                  <i class="fa fa-caret-down"></i>
+                </button>
+                <div class="btn-split-menu">
+                  <button onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">CSV</button>
+                  <button onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">Submission file</button>
+                </div>
+              </div>
+            <button class="btn btn-secondary btn-sm jo-audit-trail" type="button" data-id="${esc(it.jo_record_id)}">
+              <i class="fa fa-history"></i>&nbsp;&nbsp;Audit trail
             </button>
             <button type="button" data-id="${esc(it.jo_record_id)}" class="btn btn-secondary btn-sm jo-request-revision"><i class="fa fa-edit"></i>&nbsp;&nbsp;Request revision</button>
           </div>
@@ -541,13 +566,13 @@ document.addEventListener('click', e => {
     }
   }
 });
-document.addEventListener("click", e => {
+document.addEventListener("click", (e) => {
   const toggle = e.target.closest(".btn-split-toggle");
-  document.querySelectorAll(".btn-split").forEach(el =>
-    el.classList.remove("open")
-  );
-  if (toggle) {
-    toggle.closest(".btn-split").classList.toggle("open");
+  const clickedSplit = toggle?.closest(".btn-split") || null;
+  const wasOpen = !!clickedSplit && clickedSplit.classList.contains("open");
+  document.querySelectorAll(".btn-split.open").forEach(el => el.classList.remove("open"));
+  if (clickedSplit && !wasOpen) {
+    clickedSplit.classList.add("open");
     e.stopPropagation();
   }
 });

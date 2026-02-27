@@ -129,7 +129,8 @@
       hasRange?.dispatchEvent(new Event("change"));
       setInput("re-conc", rec?.concentration_lower || "");
       setInput("re-conc-upper", rec?.concentration_upper || "");
-      setSelectByText($("re-conc-unit"), rec?.concentration_unit || "");
+      setInput("re-conc-note", rec?.concentration_note || "");
+      setInput("re-conc-unit", rec?.concentration_unit || "");
   
       setInput("omega2", rec?.omega2 ?? "");
       setInput("omega4", rec?.omega4 ?? "");
