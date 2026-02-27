@@ -75,23 +75,30 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
     $u = trim((string)$ruleUnit[$i]);
     if ($c === '' || $v === '' || $u === '') continue;
     if (!isset($allowedOps[$o])) continue;
+    if(($allowedOps[$o] === '>=' && $v <= 0) || ($allowedOps[$o] === '>' && $v < 0)) {
+      continue;
+    }
     $pC = ":rc{$i}";
     $pV = ":rv{$i}";
-    $pU = ":ru{$i}";
     $params[$pC] = $c;
     $params[$pV] = (float)$v;
-    $params[$pU] = $u;
-    if ($o === '<=') {
+    $unitSql = '';
+    if (!$u === 'any%') {
+      $pU = ":ru{$i}";
+      $params[$pU] = $u;
+      $unitSql = " AND cc.unit = $pU ";
+    }
+    if ($o === '<=' || $o === '<') {
       $where[] = "(NOT EXISTS (
           SELECT 1 FROM jo_composition_components cc
           WHERE cc.jo_record_id = r.id
             AND cc.component LIKE CONCAT('%', $pC, '%')
-            AND cc.unit = $pU
+            $unitSql
         ) OR EXISTS (
           SELECT 1 FROM jo_composition_components cc
           WHERE cc.jo_record_id = r.id
             AND cc.component LIKE CONCAT('%', $pC, '%')
-            AND cc.unit = $pU
+            $unitSql
             AND cc.value <= $pV
         ))";
     } else {
@@ -99,7 +106,7 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
         SELECT 1 FROM jo_composition_components cc
         WHERE cc.jo_record_id = r.id
           AND cc.component LIKE CONCAT('%', $pC, '%')
-          AND cc.unit = $pU
+          $unitSql
           AND cc.value {$allowedOps[$o]} $pV
       )";
     }
