@@ -6,13 +6,13 @@ This repository hosts the interactive online database of experimentally reported
 
 <p align="center">
   <a href="https://www.loms.cz/jo-db/demo/search_ui.png">
-    <img src="https://www.loms.cz/jo-db/demo/search_ui.png" width="33%" />
+    <img src="https://www.loms.cz/jo-db/demo/search_ui.png" width="30%" />
   </a>
   <a href="https://www.loms.cz/jo-db/demo/record_details.png">
-    <img src="https://www.loms.cz/jo-db/demo/record_details.png" width="33%" />
+    <img src="https://www.loms.cz/jo-db/demo/record_details.png" width="30%" />
   </a>
   <a href="https://www.loms.cz/jo-db/demo/publication_details.png">
-    <img src="https://www.loms.cz/jo-db/demo/publication_details.png" width="33%" />
+    <img src="https://www.loms.cz/jo-db/demo/publication_details.png" width="30%" />
   </a>
 </p>
 
