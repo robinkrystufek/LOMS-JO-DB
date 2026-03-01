@@ -112,81 +112,131 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
     }
   }
 }
-function normalizeComposition(array &$components): void {
-  if (!$components) return;
+function parseComposition($composition): ?array {
+    if (!$composition) return null;
+    if (is_string($composition)) {
+        $composition = json_decode($composition, true);
+    }
+    if (!is_array($composition) || !$composition) return null;
+    $out = [];
+    foreach ($composition as $el => $cnt) {
+        $el = trim((string)$el);
+        if ($el === '') continue;
+        $v = (float)$cnt;
+        if ($v <= 0) continue;
+        $out[$el] = ($out[$el] ?? 0.0) + $v;
+    }
+    return $out ?: null;
+}
+function atomCountFromComposition($composition, float $fallbackAtomNumber = 0.0): float {
+    $comp = parseComposition($composition);
+    if (!$comp) return $fallbackAtomNumber;
+    $sum = 0.0;
+    foreach ($comp as $cnt) $sum += (float)$cnt;
+    return $sum > 0 ? $sum : $fallbackAtomNumber;
+}
+function normalizeComposition(array &$components): array {
+  if (!$components) return [];
   $EPS = 1e-12;
   $moles = [];
   $totalMoles = 0.0;
   foreach ($components as $i => $c) {
-    $val   = (float)($c['value'] ?? 0);
-    $unit  = strtolower(trim($c['unit'] ?? ''));
-    $mw    = (float)($c['mw'] ?? 0);
-    $atoms = getAtomCountFromComposition($c['composition']);
-    if ($val <= 0) {
-      $moles[$i] = 0;
-      continue;
-    }
+    $val  = (float)($c['value'] ?? 0);
+    $unit = strtolower(trim((string)($c['unit'] ?? '')));
+    $mw   = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
+    if ($val <= 0) { $moles[$i] = 0.0; continue; }
     if ($unit === 'mol%') {
       $n = $val;
     } 
     elseif ($unit === 'wt%') {
-      if ($mw <= $EPS) {
-        $n = 0;
-      } 
-      else {
-        $mass = $val;
-        $n = $mass / $mw;
-      }
+      $n = ($mw > $EPS) ? ($val / $mw) : 0.0;
     } 
     elseif ($unit === 'at%') {
-      if ($atoms <= $EPS) {
-        $n = 0;
-      } 
-      else {
-        $atomFraction = $val / 100.0;
-        $totalAtoms = 100.0;
-        $atomCount = $atomFraction * $totalAtoms;
-        $n = $atomCount / $atoms;
-      }
+      $n = ($atoms > $EPS) ? (($val / 100.0) * 100.0 / $atoms) : 0.0;
     } 
     else {
-      $n = 0;
+      $n = 0.0;
     }
     $moles[$i] = $n;
     $totalMoles += $n;
   }
-  if ($totalMoles <= $EPS) return;
+  if ($totalMoles <= $EPS) return [];
   $totalMass = 0.0;
-  $totalAtoms = 0.0;
+  $totalAtomCount = 0.0;
   foreach ($components as $i => $c) {
     $n = $moles[$i];
-    $mw    = (float)($c['mw'] ?? 0);
-    $atoms = getAtomCountFromComposition($c['composition']);
-    $totalMass  += $n * $mw;
-    $totalAtoms += $n * $atoms;
+    if ($n <= 0) continue;
+    $mw = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
+    $totalMass      += $n * $mw;
+    $totalAtomCount += $n * $atoms;
   }
-  if ($totalMass <= $EPS)  $totalMass = 1;
-  if ($totalAtoms <= $EPS) $totalAtoms = 1;
+  if ($totalMass <= $EPS)      $totalMass = 1.0;
+  if ($totalAtomCount <= $EPS) $totalAtomCount = 1.0;
   foreach ($components as $i => &$c) {
-    $n     = $moles[$i];
-    $mw    = (float)($c['mw'] ?? 0);
-    $atoms = getAtomCountFromComposition($c['composition']);
-    $c['c_mol'] = round(($n / $totalMoles) * 100, 6);
+    $n = $moles[$i];
+    $mw = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
+    $c['c_mol'] = round(($n / $totalMoles) * 100.0, 6);
     $mass = $n * $mw;
-    $c['c_wt']  = round(($mass / $totalMass) * 100, 6);
-    $atomCount = $n * $atoms;
-    $c['c_at']  = round(($atomCount / $totalAtoms) * 100, 6);
+    $c['c_wt']  = round(($mass / $totalMass) * 100.0, 6);
+    $atomCnt = $n * $atoms;
+    $c['c_at']  = round(($atomCnt / $totalAtomCount) * 100.0, 6);
   }
+  unset($c);
+  $elemAtoms = [];
+  $elemTotal = 0.0;
+  foreach ($components as $i => $c) {
+    $n = $moles[$i];
+    if ($n <= 0) continue;
+    $comp = parseComposition($c['composition'] ?? null);
+    if (!$comp) continue;
+    foreach ($comp as $el => $cnt) {
+      $a = $n * (float)$cnt;
+      $elemAtoms[$el] = ($elemAtoms[$el] ?? 0.0) + $a;
+      $elemTotal += $a;
+    }
+  }
+  if ($elemTotal <= $EPS) return [];
+  $out = [];
+  $weights = atomic_weights();
+  $massTotal = 0.0;
+  foreach ($elemAtoms as $el => $a) {
+    $out[$el]["c_at"] = round(($a / $elemTotal) * 100.0, 6);
+    if (!isset($weights[$el])) {
+      $out[$el]["c_wt"] = null;
+    } 
+    else {
+      $mw = $weights[$el];
+      $mass = $a * $mw;
+      $out[$el]["c_wt"] = $mass;
+      $massTotal += $mass;
+    }
+  }
+  if ($massTotal > $EPS) {
+    foreach ($out as $el => &$data) {
+      if ($data["c_wt"] !== null) {
+        $data["c_wt"] = round(($data["c_wt"] / $massTotal) * 100.0, 6);
+      }
+    }
+    unset($data);
+  }
+  ksort($out);
+  return $out;
 }
-function getAtomCountFromComposition($composition): float {
-  if (!$composition) return 0.0;
-  if (is_string($composition)) {
-    $composition = json_decode($composition, true);
-  }
-  if (!is_array($composition)) return 0.0;
-  $sum = 0.0;
-  foreach ($composition as $el => $count) {
-    $sum += (float)$count;
-  }
-  return $sum;
+function atomic_weights(): array {
+  return [
+    'H'=>1.00794,  'He'=>4.002602,
+    'Li'=>6.941,   'Be'=>9.012182, 'B'=>10.811,  'C'=>12.0107, 'N'=>14.0067, 'O'=>15.9994, 'F'=>18.9984032, 'Ne'=>20.1797,
+    'Na'=>22.98976928,'Mg'=>24.3050,'Al'=>26.9815386,'Si'=>28.0855,'P'=>30.973762,'S'=>32.065,'Cl'=>35.453,'Ar'=>39.948,
+    'K'=>39.0983,'Ca'=>40.078,'Sc'=>44.955912,'Ti'=>47.867,'V'=>50.9415,'Cr'=>51.9961,'Mn'=>54.938045,'Fe'=>55.845,'Co'=>58.933195,'Ni'=>58.6934,'Cu'=>63.546,'Zn'=>65.38,'Ga'=>69.723,'Ge'=>72.63,'As'=>74.92160,'Se'=>78.96,'Br'=>79.904,'Kr'=>83.798,
+    'Rb'=>85.4678,'Sr'=>87.62,'Y'=>88.90585,'Zr'=>91.224,'Nb'=>92.90638,'Mo'=>95.96,'Tc'=>98.0,'Ru'=>101.07,'Rh'=>102.90550,'Pd'=>106.42,'Ag'=>107.8682,'Cd'=>112.411,'In'=>114.818,'Sn'=>118.710,'Sb'=>121.760,'Te'=>127.60,'I'=>126.90447,'Xe'=>131.293,
+    'Cs'=>132.9054519,'Ba'=>137.327,'La'=>138.90547,'Ce'=>140.116,'Pr'=>140.90765,'Nd'=>144.242,'Pm'=>145.0,'Sm'=>150.36,'Eu'=>151.964,'Gd'=>157.25,'Tb'=>158.92535,'Dy'=>162.500,'Ho'=>164.93032,'Er'=>167.259,'Tm'=>168.93421,'Yb'=>173.054,'Lu'=>174.9668,
+    'Hf'=>178.49,'Ta'=>180.94788,'W'=>183.84,'Re'=>186.207,'Os'=>190.23,'Ir'=>192.217,'Pt'=>195.084,'Au'=>196.966569,'Hg'=>200.59,'Tl'=>204.3833,'Pb'=>207.2,'Bi'=>208.98040,'Po'=>209.0,'At'=>210.0,'Rn'=>222.0,
+    'Fr'=>223.0,'Ra'=>226.0,'Ac'=>227.0,'Th'=>232.03806,'Pa'=>231.03588,'U'=>238.02891,
+  ];
 }
