@@ -4,7 +4,19 @@
 
 This repository hosts the interactive online database of experimentally reported Judd–Ofelt (JO) intensity parameters. The platform aggregates literature-derived Ω₂, Ω₄, and Ω₆ values together with compositional, spectroscopic, and publication metadata. It is designed to support validation, benchmarking, and meta-analysis of rare-earth optical materials.
 
-The database integrates tightly with the LOMS Judd–Ofelt analysis suite, enabling cross-validation of calculated results against published datasets.
+<p align="center">
+  <a href="https://www.loms.cz/jo-db/demo/search_ui.png">
+    <img src="https://www.loms.cz/jo-db/demo/search_ui.png" width="33%" />
+  </a>
+  <a href="https://www.loms.cz/jo-db/demo/record_details.png">
+    <img src="https://www.loms.cz/jo-db/demo/record_details.png" width="33%" />
+  </a>
+  <a href="https://www.loms.cz/jo-db/demo/publication_details.png">
+    <img src="https://www.loms.cz/jo-db/demo/publication_details.png" width="33%" />
+  </a>
+</p>
+
+The database integrates tightly with the LOMS [Judd–Ofelt analysis suite][jo], enabling cross-validation of calculated results against published datasets.
 
 ## Features
 
@@ -35,15 +47,22 @@ LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and
 - Boxicons — https://github.com/atisawd/boxicons
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
 
-This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry. Component entries are cross-checked against the [refractiveindex.info][refractive-index-info] database, maintained by Mikhail Polyanskiy, and provide direct links to the corresponding records.
+[![publication timeline][publication-timeline]][publication-timeline]
+
+This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry. Component entries are cross-checked against the [refractiveindex.info][refractive-index-info] database, maintained by Mikhail Polyanskiy, and provide direct links to the corresponding records. Chemical interpretation of the record components is performed with the help of [PubChem PUG REST API][pubchem].
 
 ## License
 
 This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License][cc-by-nc-nd]. See the [LICENSE][licence] file for more information.
+
+[![CC BY-NC-ND 4.0][cc-by-nc-nd-image]][cc-by-nc-nd]
 
 [LOMSDB]: https://www.loms.cz/jo-db/
 [licence]: https://github.com/robinkrystufek/LOMS-JO/blob/main/LICENSE
 [cc-by-nc-nd]: https://creativecommons.org/licenses/by-nc-nd/4.0/
 [cc-by-nc-nd-image]: https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png
 [cc-by-nc-nd-shield]: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
+[publication-timeline]: https://www.loms.cz/jo-db/demo/publication_credits.png
 [refractive-index-info]: https://github.com/polyanskiy/refractiveindex.info-database
+[pubchem]: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
+[jo]: https://www.loms.cz/jo/
