@@ -106,8 +106,12 @@ function fmtNum(x) {
   if (!s.includes('.')) return s;
   return s.replace(/\.?0+$/, '');
 }
+function fmtFixed(x, decimals) {
+  return Number.isFinite(x) ? Number(x).toFixed(decimals) : '';
+}
 function compositionShorthand(components) {
   if (!Array.isArray(components) || !components.length) return '';
+  if(components.length === 1) return components[0].component;
   const valid = components.filter(c => isFinite(c.value) && c.component);
   if (!valid.length) return '';
   const EPS = 1e-9;
@@ -117,11 +121,6 @@ function compositionShorthand(components) {
     precision = 0;
   } 
   else {
-    function estimateDecimals(x) {
-      const s = Number(x).toPrecision(12);
-      const m = s.match(/\.(\d+?)0*$/);
-      return m ? m[1].length : 0;
-    }
     const decs = valid.map(c => estimateDecimals(c.value));
     precision = Math.min(...decs);
     if (precision === 0 && decs.some(d => d > 0)) precision = 1;
@@ -135,6 +134,24 @@ function compositionShorthand(components) {
   const body = parts.join('–');
   return unit ? `${body} (${unit})` : body;
 }
+function estimateDecimals(x) {
+  const s = Number(x).toPrecision(12);
+  const m = s.match(/\.(\d+?)0*$/);
+  return m ? m[1].length : 0;
+}
+function columnPrecision(rows, getNum, maxDecimals = 3) {
+  const EPS = 1e-9;
+  const nums = (rows || [])
+    .map(r => getNum(r))
+    .filter(v => Number.isFinite(v));
+  if (!nums.length) return 0;
+  const allIntegers = nums.every(v => Math.abs(v - Math.round(v)) < EPS);
+  if (allIntegers) return 0;
+  const decs = nums.map(estimateDecimals);
+  let p = Math.min(...decs);
+  if (p === 0 && decs.some(d => d > 0)) p = 1;
+  return Math.min(p, maxDecimals);
+}
 function render(items) {
   tbody.innerHTML = '';
   items.forEach((it, idx) => {
@@ -147,7 +164,7 @@ function render(items) {
     .map((val, id) => `
       <span class="jo-db-badge"
             style="color: ${esc(foregroundColors[it.badges_states[id]] || "#888")}; background-color: ${esc(backgroundColors[it.badges_states[id]] || "#888")}; border: ${esc(it.badges_notes[id] || "")==""?  '1px solid ' + esc(backgroundColors[it.badges_states[id]] || "#888") : '1px dashed ' + esc(foregroundColors[it.badges_states[id]] || "#888")};"
-            title="${esc(it.badges_notes[id] || "")}">
+            title="${id == 6 ? esc(fmtNum(it.density)) + ' g/cm³' || "" : esc(it.badges_notes[id] || "")}">
         ${esc(it.badges[id] || id)}
       </span>
     `)
@@ -173,20 +190,36 @@ function render(items) {
     const det = document.createElement('tr');
     det.id = detailsId;
     det.className = 'jo-db-details-row jo-db-hidden';
-    const compRows = (d.composition_components || []).map(c => {
-      const value = isFinite(c.value) ? Number(c.value).toPrecision(3) : '';
-      const unit  = c.unit ? ` ${esc(c.unit)}` : '';
+    const comps = (d.composition_components || []);
+    const pValue = columnPrecision(comps, c => Number(c.value), 3);
+    const compRows = comps.map(c => {
+      const value    = fmtFixed(Number(c.value), pValue);
+      const cMol     = fmtFixed(Number(c.c_mol), Math.max (pValue, 1));
+      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pValue, 1));
+      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pValue, 1));
       return `
         <tr>
-          <td>
-            <button class="comp-filter-btn" data-component="${esc(c.component)}" title="Search for entries containing this component. Shift+click to add multiple components">
+          <td style="overflow: inherit;">
+            <button class="comp-filter-btn" data-component="${esc(c.component)}" title="Search for entries containing ${esc(c.component)}. Shift+click to add multiple components">
               ${esc(c.component)}
               <i class="fa fa-filter"></i>
             </button>
           </td>
-          <td style="text-align:right">
-            <button class="comp-filter-btn" data-component="${esc(c.component)}" data-concentration="${value}" data-unit="${esc(c.unit)}" title="Search for entries containing this component in the same concentration">
-              ${value}${unit}
+          <td style="text-align:right; overflow: inherit;">
+            <button class="comp-filter-btn" ${c.unit != 'mol%' ? 'style="color:var(--text-muted);" ' : ''}data-component="${esc(c.component)}" data-concentration="${c.unit == "mol%" ? value : cMol}" data-unit="mol%" title="Search for entries containing ${esc(c.component)} at ${c.unit == "mol%" ? value : cMol} mol%">
+              ${c.unit == "mol%" ? value : cMol} mol%
+              <i class="fa fa-filter"></i>
+            </button>
+          </td>
+          <td style="text-align:right; overflow: inherit;">
+            <button class="comp-filter-btn" ${c.unit != 'wt%' ? 'style="color:var(--text-muted);" ' : ''}data-component="${esc(c.component)}" data-concentration="${c.unit == "wt%" ? value : cWt}" data-unit="wt%" title="Search for entries containing ${esc(c.component)} at ${c.unit == "wt%" ? value : cWt} wt%">
+              ${c.unit == "wt%" ? value : cWt} wt%
+              <i class="fa fa-filter"></i>
+            </button>
+          </td>
+          <td style="text-align:right; overflow: inherit;">
+            <button class="comp-filter-btn" ${c.unit != 'at%' ? 'style="color:var(--text-muted);" ' : ''}data-component="${esc(c.component)}" data-concentration="${c.unit == "at%" ? value : cAt}" data-unit="at%" title="Search for entries containing ${esc(c.component)} at ${c.unit == "at%" ? value : cAt} at%">
+              ${c.unit == "at%" ? value : cAt} at%
               <i class="fa fa-filter"></i>
             </button>
           </td>
@@ -208,6 +241,23 @@ function render(items) {
     if (d.loms_file_url) {
     lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
     }
+    const stateMapRI = {
+      0: "<i class='fa fa-times'></i> ",
+      1: "<i class='fa fa-question'></i> ",
+      2: "<i class='fa fa-check'></i> (Single value) ",
+      3: "<i class='fa fa-check'></i> (Dispersion relation) "
+    };
+    const startsWithNumber = /^[0-9]+(\.[0-9]+)?\b/.test(it.badges_notes[0]);
+    let rIndexDesc = "";
+    if (startsWithNumber && it.badges_states[0] == 2) {
+      rIndexDesc = esc(it.badges_notes[0]);
+    } 
+    else {
+      rIndexDesc += stateMapRI[it.badges_states[0]] ?? "";
+      if (it.badges_notes[0] !== "") {
+        rIndexDesc += `<i class='fa fa-question-circle tooltip-icon' data-tooltip='${esc(it.badges_notes[0])}'></i>`;
+      }
+    }
     det.innerHTML = `
       <td colspan="10" style="overflow: visible;">
         <div class="jo-db-details">
@@ -228,8 +278,7 @@ function render(items) {
             </dd>
             <dt>Refractive index</dt>
             <dd>
-              ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> (Single value) ',3:'<i class=\'fa fa-check\'></i> (Dispersion relation) '}[it.badges_states[0]] ?? '')}
-              ${esc(it.badges_notes[0]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[0])+'\'></i>' : ''}
+              ${rIndexDesc}
             </dd>
             <dt>JO parameters</dt>
             <dd>
@@ -556,12 +605,14 @@ document.addEventListener('click', e => {
   if (!btn) return;
   const comp = btn.dataset.component;
   if(btn.dataset.concentration && btn.dataset.unit) {
+    resetSearchInput(false);
     addComponentToMultiFilter(comp, true, btn.dataset.concentration, btn.dataset.unit);
   }
   else {
     if (e.shiftKey) {
       addComponentToMultiFilter(comp, false);
     } else {
+      resetSearchInput(false);
       addComponentToMultiFilter(comp, true);
     }
   }

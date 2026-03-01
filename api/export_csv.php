@@ -68,6 +68,7 @@ try {
   if ($compositionQ !== '') {
     $where[] = "(
       r.re_ion LIKE :composition_q_re_ion OR 
+      r.sample_label LIKE :composition_q_label OR 
       r.composition_text LIKE :composition_q_text OR 
       EXISTS (
         SELECT 1 FROM jo_composition_components cc
@@ -75,6 +76,7 @@ try {
           AND cc.component LIKE :composition_q_component
       ))";
     $params[':composition_q_re_ion'] = '%' . $compositionQ . '%';
+    $params[':composition_q_label'] = '%' . $compositionQ . '%';
     $params[':composition_q_text'] = '%' . $compositionQ . '%';
     $params[':composition_q_component'] = '%' . $compositionQ . '%';
   }

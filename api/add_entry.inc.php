@@ -167,3 +167,108 @@ function kv_get_all(array $kv, string $key): array {
   if (is_array($v)) return array_map('strval', $v);
   return [(string)$v];
 }
+function curl_multi_json(array $urls, int $concurrency = 6, int $timeoutMs = 15000, int $connectTimeoutMs = 1600): array {
+  $mh = curl_multi_init();
+  $queue = array_values($urls);
+  $handles = [];
+  $out = [];
+  $makeHandle = function(string $url) use ($timeoutMs, $connectTimeoutMs) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_FOLLOWLOCATION => true,
+      CURLOPT_CONNECTTIMEOUT_MS => $connectTimeoutMs,
+      CURLOPT_TIMEOUT_MS => $timeoutMs,
+      CURLOPT_USERAGENT => 'JO-DB add_entry multi/1.0',
+      CURLOPT_HTTPHEADER => ['Accept: application/json'],
+    ]);
+    return $ch;
+  };
+  for ($i = 0; $i < $concurrency && count($queue); $i++) {
+    $url = array_shift($queue);
+    $ch = $makeHandle($url);
+    $handles[(int)$ch] = $url;
+    curl_multi_add_handle($mh, $ch);
+  }
+  $running = null;
+  do {
+    do {
+      $mrc = curl_multi_exec($mh, $running);
+    } while ($mrc === CURLM_CALL_MULTI_PERFORM);
+    while ($info = curl_multi_info_read($mh)) {
+      $ch = $info['handle'];
+      $url = $handles[(int)$ch] ?? '(unknown)';
+      $raw = curl_multi_getcontent($ch);
+      $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      $err  = curl_error($ch);
+      $json = null;
+      if ($raw !== false && $raw !== '' && $err === '') {
+        $tmp = json_decode($raw, true);
+        if (json_last_error() === JSON_ERROR_NONE) $json = $tmp;
+      }
+      $out[$url] = [
+        'ok' => ($err === '' && $http >= 200 && $http < 300 && $json !== null),
+        'http' => $http,
+        'json' => $json,
+        'raw' => is_string($raw) ? $raw : '',
+        'error' => $err ?: ($json === null ? 'Invalid JSON' : ''),
+      ];
+      curl_multi_remove_handle($mh, $ch);
+      curl_close($ch);
+      unset($handles[(int)$ch]);
+      if (count($queue)) {
+        $nextUrl = array_shift($queue);
+        $nextCh = $makeHandle($nextUrl);
+        $handles[(int)$nextCh] = $nextUrl;
+        curl_multi_add_handle($mh, $nextCh);
+      }
+    }
+    if ($running) {
+      curl_multi_select($mh, 0.25);
+    }
+  } while ($running || count($handles));
+  curl_multi_close($mh);
+  return $out;
+}
+function fetchComponentDetails($compRows, ?PDO $pdo = null) {
+  $baseUrl = 'https://www.loms.cz/jo-db/api/lookup_pubchem.php?q=';
+  $uniq = [];
+  foreach ($compRows as $row) {
+    $q = (string)($row['component'] ?? '');
+    if ($q !== '') $uniq[$q] = true;
+  }
+  $names = array_keys($uniq);
+  $local = [];
+  if ($pdo instanceof PDO && count($names)) {
+    $ph = implode(',', array_fill(0, count($names), '?'));
+    $st = $pdo->prepare("SELECT id, ui_name FROM jo_components WHERE ui_name IN ($ph)");
+    $st->execute($names);
+    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+      $local[(string)$r['ui_name']] = (int)$r['id'];
+    }
+  }
+  $componentLinks = [];
+  foreach ($names as $name) {
+    if (isset($local[$name])) continue;
+    $componentLinks[$name] = $baseUrl . rawurlencode($name);
+  }
+  $out = [];
+  if (count($componentLinks)) {
+    $out = curl_multi_json(array_values($componentLinks), concurrency: 6, timeoutMs: 15000, connectTimeoutMs: 1600);
+  }
+  for ($i = 0; $i < count($compRows); $i++) {
+    $q = (string)($compRows[$i]['component'] ?? '');
+    if ($q !== '' && isset($local[$q])) {
+      $compRows[$i]['id'] = (int)$local[$q];
+      continue;
+    }
+    $url = ($q !== '') ? ($componentLinks[$q] ?? null) : null;
+    $r = ($url !== null) ? ($out[$url] ?? null) : null;
+    if (is_array($r) && isset($r['json']['component_id'])) {
+      $compRows[$i]['id'] = (int)$r['json']['component_id'];
+    } else {
+      $compRows[$i]['id'] = null;
+    }
+  }
+  return $compRows;
+}

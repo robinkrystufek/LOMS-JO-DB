@@ -417,10 +417,11 @@ try {
       }
     }
   }
+  $compRows = fetchComponentDetails($compRows, $pdo);
   if (!empty($compRows)) {
     $insComp = $pdo->prepare("
-      INSERT INTO jo_composition_components (jo_record_id, component, value, unit)
-      VALUES (:jo_record_id, :component, :value, :unit)
+      INSERT INTO jo_composition_components (jo_record_id, component, value, unit, component_id)
+      VALUES (:jo_record_id, :component, :value, :unit, :component_id)
     ");
     foreach ($compRows as $r) {
       $insComp->execute([
@@ -428,10 +429,10 @@ try {
         ':component' => $r['component'],
         ':value' => $r['value'],
         ':unit' => $r['unit'],
+        ':component_id' => $r['id']
       ]);
     }
   }
-
   $storedRelPath = null;
   $hasUpload = isset($_FILES['jo_recalc_file']) && is_array($_FILES['jo_recalc_file']) && ($_FILES['jo_recalc_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
   if ($hasUpload) {
