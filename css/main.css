@@ -158,6 +158,9 @@ input[type=number] {
 .doi-status.is-success {
   color: #2F7A4A;
 }
+.doi-status.is-parseable {
+  color: #eccb5c;
+}
 .doi-status.is-error {
   color: #A33A3A;
 }
@@ -220,6 +223,14 @@ select {
   pointer-events: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
   z-index: 9999;
+}
+.tooltip-icon-right::after {
+  transform: translateX(-50%) translateY(4px) !important;
+}
+.tooltip-icon-right:hover::after,
+.tooltip-icon-right:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) !important;
 }
 .tooltip-icon:hover::after,
 .tooltip-icon:hover::before {
@@ -566,8 +577,7 @@ label {
 }
 .jo-db-advanced-row {
   display: grid;
-  grid-template-columns:
-    minmax(140px, 1.4fr) 64px minmax(90px, 0.8fr) 90px;
+  grid-template-columns: minmax(140px, 1.4fr) 64px minmax(90px, 0.8fr) 90px;
   gap: 6px;
   align-items: center;
 }
@@ -578,7 +588,23 @@ label {
 #adv-unit {
   padding-left: 4px;
   padding-right: 4px;
-  text-align: center;
+  text-align: left;
+}
+#adv-rules-list>.jo-db-adv-rule {
+  grid-template-columns: minmax(140px, 1.4fr) 64px minmax(90px, 0.8fr) 59px 20px !important;
+}
+.jo-db-adv-rule code:nth-child(1) {
+  margin-left: -2px;
+}
+.jo-db-adv-rule code:nth-child(2) {
+  margin-left: 7px;
+}
+.jo-db-adv-rule code:nth-child(3) {
+  margin-right: 3px;
+  text-align: right;
+}
+.jo-db-adv-rule code:nth-child(4) {
+  margin-left: 10px;
 }
 #adv-value {
   text-align: right;
@@ -1091,7 +1117,7 @@ table.jo-db-table {
   font-size: 12px;
 }
 .jo-db-adv-remove {
-  padding: 0 8px;
+  padding: 3px 4px;
   line-height: 1;
 }
 .jo-db-results-title {

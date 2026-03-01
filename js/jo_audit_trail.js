@@ -67,8 +67,8 @@
       const rows = (chain || []).map((r, idx) => {
         const versionNumber = chain.length - idx;
         const badge = idx === 0
-          ? `<span class="jo-db-badge">Current (v${versionNumber})</span>`
-          : `<span class="jo-db-badge">v${versionNumber}</span><span style="font-weight: 1000;">⤴</span>`;
+          ? `<span class="jo-db-badge" onclick="window.location.href = 'api/export_entry.php?type=loms&id=${esc(r.record_id)}';">Current (v${versionNumber})</span>`
+          : `<span class="jo-db-badge" onclick="window.location.href = 'api/export_entry.php?type=loms&id=${esc(r.record_id)}';">v${versionNumber}</span><span style="font-weight: 1000;">⤴</span>`;
   
         return `
           <tr>

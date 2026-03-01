@@ -83,7 +83,7 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
     $params[$pC] = $c;
     $params[$pV] = (float)$v;
     $unitSql = '';
-    if (!$u === 'any%') {
+    if ($u != 'any%') {
       $pU = ":ru{$i}";
       $params[$pU] = $u;
       $unitSql = " AND cc.unit = $pU ";
@@ -111,4 +111,82 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
       )";
     }
   }
+}
+function normalizeComposition(array &$components): void {
+  if (!$components) return;
+  $EPS = 1e-12;
+  $moles = [];
+  $totalMoles = 0.0;
+  foreach ($components as $i => $c) {
+    $val   = (float)($c['value'] ?? 0);
+    $unit  = strtolower(trim($c['unit'] ?? ''));
+    $mw    = (float)($c['mw'] ?? 0);
+    $atoms = getAtomCountFromComposition($c['composition']);
+    if ($val <= 0) {
+      $moles[$i] = 0;
+      continue;
+    }
+    if ($unit === 'mol%') {
+      $n = $val;
+    } 
+    elseif ($unit === 'wt%') {
+      if ($mw <= $EPS) {
+        $n = 0;
+      } 
+      else {
+        $mass = $val;
+        $n = $mass / $mw;
+      }
+    } 
+    elseif ($unit === 'at%') {
+      if ($atoms <= $EPS) {
+        $n = 0;
+      } 
+      else {
+        $atomFraction = $val / 100.0;
+        $totalAtoms = 100.0;
+        $atomCount = $atomFraction * $totalAtoms;
+        $n = $atomCount / $atoms;
+      }
+    } 
+    else {
+      $n = 0;
+    }
+    $moles[$i] = $n;
+    $totalMoles += $n;
+  }
+  if ($totalMoles <= $EPS) return;
+  $totalMass = 0.0;
+  $totalAtoms = 0.0;
+  foreach ($components as $i => $c) {
+    $n = $moles[$i];
+    $mw    = (float)($c['mw'] ?? 0);
+    $atoms = getAtomCountFromComposition($c['composition']);
+    $totalMass  += $n * $mw;
+    $totalAtoms += $n * $atoms;
+  }
+  if ($totalMass <= $EPS)  $totalMass = 1;
+  if ($totalAtoms <= $EPS) $totalAtoms = 1;
+  foreach ($components as $i => &$c) {
+    $n     = $moles[$i];
+    $mw    = (float)($c['mw'] ?? 0);
+    $atoms = getAtomCountFromComposition($c['composition']);
+    $c['c_mol'] = round(($n / $totalMoles) * 100, 6);
+    $mass = $n * $mw;
+    $c['c_wt']  = round(($mass / $totalMass) * 100, 6);
+    $atomCount = $n * $atoms;
+    $c['c_at']  = round(($atomCount / $totalAtoms) * 100, 6);
+  }
+}
+function getAtomCountFromComposition($composition): float {
+  if (!$composition) return 0.0;
+  if (is_string($composition)) {
+    $composition = json_decode($composition, true);
+  }
+  if (!is_array($composition)) return 0.0;
+  $sum = 0.0;
+  foreach ($composition as $el => $count) {
+    $sum += (float)$count;
+  }
+  return $sum;
 }

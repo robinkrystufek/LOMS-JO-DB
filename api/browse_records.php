@@ -81,6 +81,7 @@ try {
   if ($compositionQ !== '') {
     $where[] = "(
       r.re_ion LIKE :composition_q_re_ion OR 
+      r.sample_label LIKE :composition_q_label OR 
       r.composition_text LIKE :composition_q_text OR 
       EXISTS (
         SELECT 1 FROM jo_composition_components cc
@@ -88,6 +89,7 @@ try {
           AND cc.component LIKE :composition_q_component
       ))";
     $params[':composition_q_re_ion'] = '%' . $compositionQ . '%';
+    $params[':composition_q_label'] = '%' . $compositionQ . '%';
     $params[':composition_q_text'] = '%' . $compositionQ . '%';
     $params[':composition_q_component'] = '%' . $compositionQ . '%';
   }
@@ -148,7 +150,6 @@ try {
       r.jo_original_paper,
       r.jo_recalc_by_loms,
       r.sample_label,
-
       r.refractive_index_option,
       r.combinatorial_jo_option,
       r.sigma_f_s_option,
@@ -161,7 +162,6 @@ try {
       r.mag_dipole_note,
       r.reduced_element_note,
       r.recalculated_loms_note,
-
       r.has_absorption_spec,
       r.has_emission_spec,
       r.has_n_spectrum,
@@ -170,7 +170,6 @@ try {
       r.has_lifetime,
       r.has_branching_ratios,
       r.has_transmission_spec,
-
       r.density_g_cm3,
       r.n_546nm,
       r.n_633nm,
@@ -179,7 +178,6 @@ try {
       r.dispersion_b,
       r.dispersion_c,
       r.extra_notes,
-
       p.doi AS pub_doi,
       p.title AS pub_title,
       p.journal AS pub_journal,
@@ -204,12 +202,25 @@ try {
   if ($recordIds) {
     $placeholders = implode(',', array_fill(0, count($recordIds), '?'));
     $stC = $pdo->prepare("
-      SELECT jo_record_id, component, value, unit
-      FROM jo_composition_components
-      WHERE jo_record_id IN ($placeholders)
-      ORDER BY jo_record_id ASC, id ASC
+      SELECT 
+        cc.jo_record_id AS jo_record_id,
+        cc.component AS component,
+        cc.value AS value,
+        cc.unit AS unit,
+        jc.cid AS cid,
+        jc.pubchem_name AS pubchem_name,
+        jc.mw AS mw,
+        jc.atom_number AS atom_number,
+        jc.composition AS composition,
+        jc.pubchem_details AS pubchem_details
+      FROM jo_composition_components cc
+      LEFT JOIN jo_components jc 
+        ON jc.id = cc.component_id
+      WHERE cc.jo_record_id IN ($placeholders)
+      ORDER BY cc.jo_record_id ASC, cc.id ASC
     ");
     $stC->execute($recordIds);
+    $rid = 0;
     while ($cc = $stC->fetch()) {
       $rid = (int)$cc['jo_record_id'];
       if (!isset($componentsByRecord[$rid])) $componentsByRecord[$rid] = [];
@@ -217,8 +228,18 @@ try {
         'component' => $cc['component'],
         'value' => $cc['value'],
         'unit' => $cc['unit'],
+        'cid' => $cc['cid'],
+        'pubchem_name' => $cc['pubchem_name'],
+        'mw' => $cc['mw'],
+        'atom_number' => $cc['atom_number'],
+        'composition' => $cc['composition'],
+        'pubchem_details' => $cc['pubchem_details']
       ];
     }
+    foreach ($componentsByRecord as $rid => &$components) {
+      normalizeComposition($components);
+    }
+    unset($components);
   }
 
   $hostTypeLabel = [
@@ -234,7 +255,7 @@ try {
     'other' => 'Other',
   ];
 
-  $items = array_map(function(array $r) use ($hostTypeLabel, $methodLabel, $componentsByRecord) {
+  $items = array_map(function(array $r) use ($hostTypeLabel, $componentsByRecord) {
     $host_type = $r['host_type'] ?? 'other';
     $hostDetails = trim(
       ucfirst($hostTypeLabel[$host_type] ?? $host_type)
@@ -305,7 +326,6 @@ try {
       'badges_states' => $badges_states,
       'has_density' => $r['has_density'],
       'density' => $r['density_g_cm3'],
-      'composition_components' => $componentsByRecord[$rid] ?? [],
       'sample_label' => $r['sample_label'] ?? '',
       'notes' => stripFilePathTag($r['extra_notes']) ?? '',
       'doi' => $r['pub_doi'] ?? '',

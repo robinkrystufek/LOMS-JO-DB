@@ -13,6 +13,16 @@
     statusEl.style.color = isOk ? 'green' : 'crimson';
   }
   form.addEventListener('submit', async function (e) {
+    const hasErrors = form.querySelector('.doi-status.is-error') !== null;
+    if (hasErrors) {
+      const proceed = confirm(
+        "One or more components could not be interpreted.\nSubmit anyway?"
+      );
+      if (!proceed) {
+        e.preventDefault();
+        return;
+      }
+    }
     e.preventDefault();
     if (btn) btn.disabled = true;
     setStatus('Submitting…', true);

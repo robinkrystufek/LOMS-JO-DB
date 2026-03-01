@@ -17,7 +17,7 @@
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
-        <input class="jo-db-datagrid-input" name="comp_component[]" value="${escapeHtml(component)}" />
+        <input class="jo-db-datagrid-input" name="comp_component[]" value="${escapeHtml(component)}" autocomplete="off" />
       </td>
       <td>
         <input class="jo-db-datagrid-input" name="comp_value[]" value="${escapeHtml(String(value))}" />
