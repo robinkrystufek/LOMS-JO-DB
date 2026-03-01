@@ -107,6 +107,7 @@ function fmtNum(x) {
   return s.replace(/\.?0+$/, '');
 }
 function fmtFixed(x, decimals) {
+  if (x === null || x === undefined || x === '' || x == 0) return 'n/a';
   return Number.isFinite(x) ? Number(x).toFixed(decimals) : '';
 }
 function compositionShorthand(components) {
@@ -194,9 +195,9 @@ function render(items) {
     const pValue = columnPrecision(comps, c => Number(c.value), 3);
     const compRows = comps.map(c => {
       const value    = fmtFixed(Number(c.value), pValue);
-      const cMol     = fmtFixed(Number(c.c_mol), Math.max (pValue, 1));
-      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pValue, 1));
-      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pValue, 1));
+      const cMol     = fmtFixed(c.c_mol, Math.max (pValue, 1));
+      const cWt      = fmtFixed(c.c_wt,  Math.max (pValue, 1));
+      const cAt      = fmtFixed(c.c_at,  Math.max (pValue, 1));
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -224,6 +225,9 @@ function render(items) {
             </button>
           </td>
           <td>
+            ${c.cid ? '<span class="pubchem-lookup" aria-hidden="true"><a href="https://pubchem.ncbi.nlm.nih.gov/compound/' + c.cid +'" target="_blank" rel="noopener" title="Open PubChem record"><img src="dist/pubchem.logo.png" alt="PC" class="pubchem-icon" /></a></span>' : ''}
+          </td>
+          <td>
             <span class="ri-lookup" data-component="${normalizeSubscripts(esc(c.component))}" aria-hidden="true"></span>
           </td>
         </tr>
@@ -237,6 +241,45 @@ function render(items) {
         </tbody>
       </table>
     `;      
+
+    const elements = Object.entries(d.elemental_composition || {})
+      .map(([element, data]) => ({
+        component: element,
+        ...data
+      }));
+    const pElementsAt = columnPrecision(elements, c => Number(c.c_at), 3);
+    const pElementsWt = columnPrecision(elements, c => Number(c.c_wt), 3);
+    const elementRows = elements.map(c => {
+      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt-1, 1));
+      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pElementsAt-1, 1));
+      return `
+        <tr>
+          <td style="overflow: inherit;">
+            <button class="comp-filter-btn" data-component="${esc(c.component)}" title="Search for entries containing ${esc(c.component)}. Shift+click to add multiple components">
+              ${esc(c.component)}
+              <i class="fa fa-filter"></i>
+            </button>
+          </td>
+          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
+              ${cAt} mol%
+          </td>
+          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
+              ${cWt} wt%
+          </td>
+          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
+              ${cAt} at%
+          </td>
+        </tr>
+      `;
+    }).join('');
+    const elementsTable = `
+      <table class="composition-detail-table">
+        <tbody>
+          ${elementRows}
+        </tbody>
+      </table>
+    `;         
+
     let lomsHtml = '';
     if (d.loms_file_url) {
     lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
@@ -322,9 +365,13 @@ function render(items) {
               ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[4]] ?? '')}
               ${esc(it.badges_notes[4]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[4])+'\'></i>' : ''}
             </dd>                    
-            <dt>Normalized composition</dt>
+            <dt>Normalized composition <i class='fa fa-question-circle tooltip-icon' data-tooltip='Non-canonical are displayed as muted and are estimated from the reported composition'></i></dt>
             <dd>
               ${compTable || ''}
+            </dd>
+            <dt>Elemental composition</dt>
+            <dd>
+              ${elementsTable || ''}
             </dd>
           </dl>
           <h3 style="margin-top: 0.5em;">Parent publication</h3>

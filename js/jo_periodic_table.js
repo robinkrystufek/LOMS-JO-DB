@@ -421,7 +421,7 @@
 const table = renderPeriodicTable("#filters-render-slot", {
   compact: true,
   tileMode: "symbol",
-  onPick: el => { document.getElementById('filter-composition-element').value = el.symbol; document.getElementById('btn-search').click(); console.log('Picked element:', el); }
+  onPick: el => { document.getElementById('filter-composition-element').value = el.symbol; document.getElementById('btn-search').click(); }
 });
 document.getElementById("filter-composition-text").addEventListener("input", e => {
   table.setHighlightedSymbol(e.target.value);

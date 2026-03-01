@@ -199,6 +199,7 @@ try {
 
   $recordIds = array_map(fn($r) => (int)$r['jo_record_id'], $rows);
   $componentsByRecord = [];
+  $elementalCompositionByRecord = [];
   if ($recordIds) {
     $placeholders = implode(',', array_fill(0, count($recordIds), '?'));
     $stC = $pdo->prepare("
@@ -237,7 +238,7 @@ try {
       ];
     }
     foreach ($componentsByRecord as $rid => &$components) {
-      normalizeComposition($components);
+      $elementalCompositionByRecord[$rid] = normalizeComposition($components);
     }
     unset($components);
   }
@@ -255,7 +256,7 @@ try {
     'other' => 'Other',
   ];
 
-  $items = array_map(function(array $r) use ($hostTypeLabel, $componentsByRecord) {
+  $items = array_map(function(array $r) use ($hostTypeLabel, $componentsByRecord, $elementalCompositionByRecord) {
     $host_type = $r['host_type'] ?? 'other';
     $hostDetails = trim(
       ucfirst($hostTypeLabel[$host_type] ?? $host_type)
@@ -340,6 +341,7 @@ try {
         'host' => $hostDetails,
         'composition' => $r['composition_text'],
         'composition_components' => $componentsByRecord[$rid] ?? [],
+        'elemental_composition' => $elementalCompositionByRecord[$rid] ?? [],
         'jo_parameters' => [
           'omega2' => $r['omega2'],
           'omega4' => $r['omega4'],
