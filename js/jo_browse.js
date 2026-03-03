@@ -365,7 +365,7 @@ function render(items) {
               ${({0:'<i class=\'fa fa-times\'></i> ',1:'<i class=\'fa fa-question\'></i> ',2:'<i class=\'fa fa-check\'></i> '}[it.badges_states[4]] ?? '')}
               ${esc(it.badges_notes[4]) != "" ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.badges_notes[4])+'\'></i>' : ''}
             </dd>                    
-            <dt>Normalized composition <i class='fa fa-question-circle tooltip-icon' data-tooltip='Non-canonical are displayed as muted and are estimated from the reported composition'></i></dt>
+            <dt>Normalized composition <i class='fa fa-question-circle tooltip-icon' data-tooltip='Non-canonical values are displayed as muted and are estimated from the reported composition'></i></dt>
             <dd>
               ${compTable || ''}
             </dd>

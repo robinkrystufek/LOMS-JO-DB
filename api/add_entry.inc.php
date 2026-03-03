@@ -7,6 +7,13 @@
  * jo_composition_components, and contributors.
  * Intended to be included by entry endpoints.
  */
+$contributor_info  = $userInfo['user_id']; 
+$contributor_email = $userInfo['email'];
+$contributor_name  = $userInfo['name'];
+$contributor_aff   = isset($userInfo['picture']) ? explode(';', $userInfo['picture'])[0] : null;
+$contributor_orcid = isset($userInfo['picture']) ? (explode(';', $userInfo['picture'] ?? '', 2)[1] ?? null) : null;
+if ($contributor_info === null) json_fail('Contributor info is required: Authentication error');
+
 function normalize_utf8(string $s): string {
   $s = preg_replace('/^\xEF\xBB\xBF/', '', $s);
   if ($s === '' || preg_match('//u', $s)) return $s;
@@ -50,20 +57,6 @@ function parse_JSON_POST($raw): string {
       }
   }
   return '{}';
-}
-function json_fail(string $msg, int $http = 400): void {
-  if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
-  http_response_code($http);
-  $payload = ['ok' => false, 'error' => $msg];
-  $json = json_encode($payload,
-    JSON_UNESCAPED_UNICODE
-    | JSON_INVALID_UTF8_SUBSTITUTE
-  );
-  if ($json === false) {
-    $json = '{"ok":false,"error":"JSON encoding failed"}';
-  }
-  echo $json;
-  exit;
 }
 function safe_filename(string $name): string {
   $name = basename($name);

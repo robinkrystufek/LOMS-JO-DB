@@ -134,6 +134,8 @@ function sendPasswordReset() {
   });
 }
 function deleteAccount() {
+  const confirmed = confirm("Are you sure you want to permanently delete your account?\n\nThis action cannot be undone.");
+  if (!confirmed) return;
   var user = firebase.auth().currentUser;
   user.delete().then(function() {
     alert('Account deleted successfully.');

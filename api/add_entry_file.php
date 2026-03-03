@@ -11,6 +11,7 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 include 'config.inc.php';
+require 'user_auth.inc.php';
 include 'add_entry.inc.php';
 $UPLOAD_BASE = dirname(__DIR__) . '/uploads/loms';    // uploads/loms/<jo_record_id>/
 $MAX_UPLOAD_BYTES = 20 * 1024 * 1024;                 // 20 MB
@@ -34,12 +35,7 @@ $entryText = file_get_contents($fEntry['tmp_name']);
 if ($entryText === false) json_fail('Failed to read entry file.', 500);
 $kv = parse_kv_file($entryText);
 
-$contributor_info = as_trimmed($_POST['contributor_info'] ?? null);
-$contributor_email = as_trimmed($_POST['contributor_info_email'] ?? null);
-$contributor_name  = as_trimmed($_POST['contributor_info_name'] ?? null);
-$contributor_aff   = as_trimmed($_POST['contributor_info_affiliation'] ?? null);
-$contributor_orcid = as_trimmed($_POST['contributor_info_orcid'] ?? null);
-if ($contributor_info === null) json_fail('Contributor info is required (contributor_info).');
+
 $is_contributor_author = bool01(as_trimmed(kv_get_first($kv, 'is_contributor_author')));
 
 $doi     = as_trimmed(kv_get_first($kv, 'pub_doi'));

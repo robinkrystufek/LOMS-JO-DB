@@ -9,6 +9,7 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 include 'config.inc.php';
+require 'user_auth.inc.php';
 include 'add_entry.inc.php';
 $UPLOAD_BASE = dirname(__DIR__) . '/uploads/loms';    // uploads/loms/<jo_record_id>/
 $MAX_UPLOAD_BYTES = 20 * 1024 * 1024;                 // 20 MB
@@ -57,7 +58,7 @@ if ($doi !== null) {
   }
 }
 
-$contributor_info = as_trimmed($get('contributor_info')); 
+
 $is_contributor_author = bool01($get('is_contributor_author'));
 $re_ion = as_trimmed($get('re_ion'));
 $re_conc_value = to_float($get('re_conc_value'));
@@ -195,11 +196,6 @@ try {
 }
 try {
   $pdo->beginTransaction();
-  $contributor_uid  = as_trimmed($get('contributor_info'));
-  $contributor_email = as_trimmed($get('contributor_info_email'));
-  $contributor_name  = as_trimmed($get('contributor_info_name'));
-  $contributor_aff   = as_trimmed($get('contributor_info_affiliation'));
-  $contributor_orcid = as_trimmed($get('contributor_info_orcid'));
   if ($contributor_email !== null) {
     $sql = "
       INSERT INTO jo_contributors (uid, email, name, affiliation, orcid)
@@ -212,7 +208,7 @@ try {
     ";
     $stmtC = $pdo->prepare($sql);
     $stmtC->execute([
-      ':uid' => $contributor_uid, 
+      ':uid' => $contributor_info, 
       ':email' => $contributor_email,
       ':name' => $contributor_name,
       ':affiliation' => $contributor_aff,
