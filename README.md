@@ -5,14 +5,14 @@
 This repository hosts the interactive online database of experimentally reported Judd–Ofelt (JO) intensity parameters. The platform aggregates literature-derived Ω₂, Ω₄, and Ω₆ values together with compositional, spectroscopic, and publication metadata. It is designed to support validation, benchmarking, and meta-analysis of rare-earth optical materials.
 
 <p align="center">
-  <a href="https://www.loms.cz/jo-db/demo/search_ui.png">
-    <img src="https://www.loms.cz/jo-db/demo/search_ui.png" width="30%" />
+  <a href="https://www.loms.cz/jo-db/">
+    <img src="demo/search_ui.png" width="30%" />
   </a>
-  <a href="https://www.loms.cz/jo-db/demo/record_details.png">
-    <img src="https://www.loms.cz/jo-db/demo/record_details.png" width="30%" />
+  <a href="https://www.loms.cz/jo-db/?row-highlight=3">
+    <img src="demo/record_details.png" width="30%" />
   </a>
-  <a href="https://www.loms.cz/jo-db/demo/publication_details.png">
-    <img src="https://www.loms.cz/jo-db/demo/publication_details.png" width="30%" />
+  <a href="https://www.loms.cz/jo-db/?row-highlight=3&pub-details=true">
+    <img src="demo/publication_details.png" width="30%" />
   </a>
 </p>
 
@@ -62,7 +62,7 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 [cc-by-nc-nd]: https://creativecommons.org/licenses/by-nc-nd/4.0/
 [cc-by-nc-nd-image]: https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png
 [cc-by-nc-nd-shield]: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
-[publication-timeline]: https://www.loms.cz/jo-db/demo/publication_credits.png
+[publication-timeline]: demo/publication_credits.png
 [refractive-index-info]: https://github.com/polyanskiy/refractiveindex.info-database
 [pubchem]: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
 [jo]: https://www.loms.cz/jo/
