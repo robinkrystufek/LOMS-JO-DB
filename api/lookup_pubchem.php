@@ -96,7 +96,11 @@ function jo_components_update_from_out(PDO $pdo, string $uiName, array $out, arr
   return $id ? (int)$id : 0;
 }
 function normalize_subscripts(string $s): string {
-  static $map = ['₀'=>'0','₁'=>'1','₂'=>'2','₃'=>'3','₄'=>'4','₅'=>'5','₆'=>'6','₇'=>'7','₈'=>'8','₉'=>'9'];
+  static $map = [
+    '₀'=>'0','₁'=>'1','₂'=>'2','₃'=>'3','₄'=>'4','₅'=>'5','₆'=>'6','₇'=>'7','₈'=>'8','₉'=>'9',
+    '⁰'=>'','¹'=>'','²'=>'','³'=>'','⁴'=>'','⁵'=>'','⁶'=>'','⁷'=>'','⁸'=>'','⁹'=>'',
+    '⁺'=>'','⁻'=>''
+  ];
   return strtr($s, $map);
 }
 function looks_like_formula(string $raw): bool {
