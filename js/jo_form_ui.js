@@ -1,4 +1,53 @@
 (() => {
+  function getQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+  function expandRowFromUrl() {
+    const rowParam = getQueryParam('row-highlight');
+    if (!rowParam) return;
+    const index = parseInt(rowParam, 10);
+    if (isNaN(index) || index < 1) return;
+    const tbody = document.getElementById('jo-tbody-results');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr.jo-db-data-row');
+    const targetRow = rows[index - 1];
+    console.log('Expanding row from URL:', { index, targetRow });
+    if (targetRow) {
+      targetRow.click();
+    }
+    const pubDetailsParam = getQueryParam('pub-details');
+    if (pubDetailsParam) {
+      targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const buttons = document.querySelectorAll('.jo-parentpub-zoom');
+      buttons[index - 1]?.click();
+    }
+    else {
+      setTimeout(() => {
+        targetRow.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 80);
+    }
+  }
+  function waitForRowsThenExpand() {
+    const tbody = document.getElementById('jo-tbody-results');
+    if (!tbody) return;
+    const observer = new MutationObserver(() => {
+      if (tbody.querySelectorAll('tr').length > 5) {
+        observer.disconnect();
+        expandRowFromUrl();
+      }
+    });
+    observer.observe(tbody, { childList: true });
+  }
+  const rowParam = getQueryParam('row-highlight');
+  if (rowParam !== null) {
+    document.addEventListener('DOMContentLoaded', () => {
+      waitForRowsThenExpand();
+    });
+  }
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('jo-add-form');
     if (!form) return;

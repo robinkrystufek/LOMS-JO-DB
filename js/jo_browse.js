@@ -185,6 +185,7 @@ function render(items) {
         <button class="btn btn-secondary btn-sm jo-db-view-btn" type="button" data-target="${esc(detailsId)}" aria-label="Entry details" title="Entry details"><i class="fa fa-search-plus"></i></button>
       </td>
     `;
+    row.classList.add("jo-db-data-row");
     row.style.cursor = 'pointer';
     tbody.appendChild(row);
     const d = it.details || {};
