@@ -33,6 +33,7 @@ The database integrates tightly with the LOMS [Judd–Ofelt analysis suite][jo],
   - Citation export (APA / BibTeX / RIS)
 - LOMS JO file import & recalculation file support
 - Firebase-based contributor authentication and review workflow
+- Public [REST API](https://www.loms.cz/jo-db/api/) with OpenAPI specification for programmatic access to JO records, publications, and export endpoints
 
 The system is built using a PHP + MySQL backend with a modular JavaScript front-end interface optimized for interactive filtering and structured data export.
 
@@ -46,6 +47,7 @@ LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and
 - Firebase JavaScript SDK — https://github.com/firebase/firebase-js-sdk
 - Boxicons — https://github.com/atisawd/boxicons
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
+- Scalar API Reference — https://github.com/scalar/scalar
 
 [![publication timeline][publication-timeline]][publication-timeline]
 
