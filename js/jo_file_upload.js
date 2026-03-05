@@ -21,10 +21,16 @@
     setStatus('Submitting…', true);
     try {
       const fd = new FormData(form);
+      const auth = firebase.auth();
+      const user = auth.currentUser;
+      const token = await user?.getIdToken(true);
       const resp = await fetch(form.action, {
         method: 'POST',
         body: fd,
-        headers: { 'Accept': 'application/json' }
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
       });
       const text = await resp.text();
       let data;
@@ -38,13 +44,13 @@
       }
       if (!resp.ok || !data || data.ok !== true) {
         const msg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
-        setStatus('Error: ' + msg, false);
+        setStatus('Error: ' + JSON.stringify(msg), false);
         return;
       }
       setStatus(`Record #${data.jo_record_id} submitted for approval!`, true);
     } 
     catch (err) {
-      setStatus('Error: ' + (err?.message || err), false);
+      setStatus('Error: ' + JSON.stringify(err?.message || err), false);
     } 
     finally {
       if (btn) btn.disabled = false;

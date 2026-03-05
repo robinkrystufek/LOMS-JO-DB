@@ -1,10 +1,42 @@
 (() => {
-  function getQueryParam(name) {
+  function getQueryParams(name = false) {
     const params = new URLSearchParams(window.location.search);
-    return params.get(name);
+    if (name) {
+      return params.get(name);
+    }
+    const out = {};
+    for (const [key, value] of params.entries()) {
+      out[key] = value;
+    }
+    return out;
   }
+  function clearUrlQuery({ keep = [] } = {}) {
+    const url = new URL(window.location.href);
+    if (!url.search) return false;
+  
+    if (!keep.length) {
+      url.search = '';
+    } else {
+      const next = new URLSearchParams();
+      const cur = url.searchParams;
+      keep.forEach(k => {
+        cur.getAll(k).forEach(v => next.append(k, v));
+      });
+      url.search = next.toString() ? `?${next.toString()}` : '';
+    }
+  
+    history.replaceState({}, '', url.toString());
+    return true;
+  }
+  
+  function hasUrlQuery() {
+    return new URL(window.location.href).searchParams.toString().length > 0;
+  }
+  window.hasUrlQuery = hasUrlQuery;
+  window.clearUrlQuery = clearUrlQuery;
+  window.getQueryParams = getQueryParams;
   function expandRowFromUrl() {
-    const rowParam = getQueryParam('row-highlight');
+    const rowParam = getQueryParams('row-highlight');
     if (!rowParam) return;
     const index = parseInt(rowParam, 10);
     if (isNaN(index) || index < 1) return;
@@ -16,7 +48,7 @@
     if (targetRow) {
       targetRow.click();
     }
-    const pubDetailsParam = getQueryParam('pub-details');
+    const pubDetailsParam = getQueryParams('pub-details');
     if (pubDetailsParam) {
       targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const buttons = document.querySelectorAll('.jo-parentpub-zoom');
@@ -42,7 +74,7 @@
     });
     observer.observe(tbody, { childList: true });
   }
-  const rowParam = getQueryParam('row-highlight');
+  const rowParam = getQueryParams('row-highlight');
   if (rowParam !== null) {
     document.addEventListener('DOMContentLoaded', () => {
       waitForRowsThenExpand();
@@ -213,6 +245,23 @@
       params.append('comp_value[]', r.value);
       params.append('comp_unit[]', r.unit);
     });
+    if (window.getQueryParams) {
+      const urlParams = window.getQueryParams();
+      Object.entries(urlParams).forEach(([key, value]) => {
+        if (value === null || value === '') return;
+        if (key.endsWith('[]')) {
+          params.delete(key);
+          if (Array.isArray(value)) {
+            value.forEach(v => params.append(key, v));
+          } 
+          else {
+            params.append(key, value);
+          }
+        } else {
+          params.set(key, value);
+        }
+      });
+    }
     const url = `api/export_csv.php?${params.toString()}`;
     window.location.href = url;
   });

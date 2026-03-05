@@ -1,0 +1,840 @@
+openapi: 3.0.3
+info:
+  title: LOMS JO Database REST API
+  version: "1.0.0"
+  description: >
+    REST-style API for searching and exporting Judd-Ofelt records and
+    retrieving publication metadata.
+servers:
+  - url: https://www.loms.cz/jo-db/api/rest
+
+tags:
+  - name: Records
+    description: Search, retrieve, export, and audit trail for JO records.
+  - name: Publications
+    description: Publication metadata and DOI index for publications with approved JO records.
+
+paths:
+  /records:
+    get:
+      tags: [Records]
+      summary: Search/browse JO records
+      description: >
+        Returns paginated JO records with optional filters and sorting.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/SortDir"
+
+        - name: re_ion
+          in: query
+          description: Filter by rare-earth ion (substring match).
+          schema:
+            type: string
+            example: Er
+        - name: host_type
+          in: query
+          description: Filter by host type (exact match).
+          schema:
+            $ref: "#/components/schemas/HostType"
+        - name: composition_q
+          in: query
+          description: >
+            Free-text composition query; matches ion, sample label, composition text,
+            or any composition component.
+          schema:
+            type: string
+            example: "Yb:LuAG"
+        - name: element_q
+          in: query
+          description: >
+            Element symbol (e.g. "O", "F", "Yb") used for element-aware matching.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{1,2}$"
+            example: O
+        - name: pub_doi_q
+          in: query
+          description: Publication DOI free-text filter.
+          schema:
+            type: string
+            example: "10.1063/1.432659"
+        - name: pub_title_q
+          in: query
+          description: Publication title free-text filter.
+          schema:
+            type: string
+        - name: pub_authors_q
+          in: query
+          description: Publication authors free-text filter.
+          schema:
+            type: string
+        - name: badges
+          in: query
+          description: >
+            Optional badge filtering (implementation-defined; passed through to server).
+          schema:
+            type: string
+        - name: adv
+          in: query
+          description: >
+            Optional advanced composition rules (implementation-defined; passed through to server).
+          schema:
+            type: string
+
+      responses:
+        "200":
+          description: Paginated list of matching JO records.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordsSearchResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}:
+    get:
+      tags: [Records]
+      summary: Retrieve a single JO record (including details)
+      description: >
+        Returns the same shape as /records, but with one item and populated details.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+      responses:
+        "200":
+          description: Record found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordsSearchResponse"
+              examples:
+                oneRecord:
+                  summary: Single record response
+                  value:
+                    ok: true
+                    page: 1
+                    per_page: 1
+                    total: 1
+                    total_pages: 1
+                    items: []
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}/citation:
+    get:
+      tags: [Records]
+      summary: Export publication citation for a JO record
+      description: >
+        Exports the citation for the publication linked to a JO record.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+        - name: format
+          in: query
+          description: Citation format.
+          schema:
+            type: string
+            enum: [ris, bibtex, apa]
+            default: ris
+      responses:
+        "200":
+          description: Citation text (Content-Disposition attachment in backend).
+          content:
+            text/plain:
+              schema:
+                type: string
+            application/x-research-info-systems:
+              schema:
+                type: string
+        "400":
+          description: Missing/invalid id or other request error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Record not found or no publication linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          description: GET required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}/citation/{format}:
+    get:
+      tags: [Records]
+      summary: Export citation with REST-style format segment
+      description: >
+        Same as /records/{id}/citation?format=..., but uses a path segment for format.
+        The router sets format from path before query default.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+        - name: format
+          in: path
+          required: true
+          description: Citation format.
+          schema:
+            type: string
+            enum: [ris, bibtex, apa]
+      responses:
+        "200":
+          description: Citation text.
+          content:
+            text/plain:
+              schema:
+                type: string
+            application/x-research-info-systems:
+              schema:
+                type: string
+        "400":
+          description: Missing/invalid id or other request error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Record not found or no publication linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          description: GET required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}/data:
+    get:
+      tags: [Records]
+      summary: Export record data (LOMS text, CSV, or citation)
+      description: >
+        Default type is loms txt if neither path segment nor query param is provided.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+        - name: type
+          in: query
+          description: Export type.
+          schema:
+            type: string
+            enum: [loms, csv, citation]
+            default: loms
+        - name: format
+          in: query
+          description: Citation format (only used when type=citation).
+          schema:
+            type: string
+            enum: [ris, bibtex, apa]
+            default: ris
+      responses:
+        "200":
+          description: Export payload (content-type depends on type/format).
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/csv:
+              schema:
+                type: string
+            application/x-research-info-systems:
+              schema:
+                type: string
+        "400":
+          description: Missing/invalid id or other request error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Record not found or no publication linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          description: GET required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}/data/{type}:
+    get:
+      tags: [Records]
+      summary: Export record data with REST-style type segment
+      description: >
+        Same as /records/{id}/data?type=..., but uses a path segment for type.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+        - name: type
+          in: path
+          required: true
+          description: Export type.
+          schema:
+            type: string
+            enum: [loms, csv, citation]
+        - name: format
+          in: query
+          description: Citation format (only used when type=citation).
+          schema:
+            type: string
+            enum: [ris, bibtex, apa]
+            default: ris
+      responses:
+        "200":
+          description: Export payload.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/csv:
+              schema:
+                type: string
+            application/x-research-info-systems:
+              schema:
+                type: string
+        "400":
+          description: Missing/invalid id or other request error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Record not found or no publication linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          description: GET required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /records/{id}/audit-trail:
+    get:
+      tags: [Records]
+      summary: Retrieve audit trail for a JO record
+      description: >
+        Returns the revision/approval chain for a JO record.
+      parameters:
+        - $ref: "#/components/parameters/RecordIdPath"
+      responses:
+        "200":
+          description: Audit trail chain.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditTrailResponse"
+        "400":
+          description: Missing/invalid id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /publications:
+    get:
+      tags: [Publications]
+      summary: List publications with approved JO records, or fetch metadata for a DOI
+      description: >
+        If query parameter doi is provided, returns stored metadata and JO record ids for that DOI.
+        If doi is omitted, returns all DOIs that have at least one approved JO record.
+      parameters:
+        - name: doi
+          in: query
+          description: DOI to fetch publication metadata for.
+          schema:
+            type: string
+            example: "10.1063/1.432659"
+      responses:
+        "200":
+          description: Publications list or DOI metadata.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PublicationsIndexResponse"
+                  - $ref: "#/components/schemas/PublicationMetadataResponse"
+        "404":
+          description: DOI not found / no valid metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /publications/{doi}:
+    get:
+      tags: [Publications]
+      summary: Fetch publication metadata for a DOI (REST-style path)
+      description: >
+        REST-style DOI metadata lookup.
+      parameters:
+        - name: doi
+          in: path
+          required: true
+          description: DOI to fetch publication metadata for.
+          schema:
+            type: string
+            example: "10.1021/j100509a003"
+      responses:
+        "200":
+          description: Publication metadata for DOI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicationMetadataResponse"
+        "404":
+          description: DOI not found / no valid metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  parameters:
+    RecordIdPath:
+      name: id
+      in: path
+      required: true
+      description: JO record id.
+      schema:
+        type: integer
+        minimum: 1
+        example: 123
+
+    Page:
+      name: page
+      in: query
+      description: Page number (1-based).
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PerPage:
+      name: per_page
+      in: query
+      description: Results per page (max 50).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 50
+
+    SortBy:
+      name: sort_by
+      in: query
+      description: Sort field.
+      schema:
+        type: string
+        enum: [id, re_ion, concentration, composition, host, omega2, omega4, omega6, pub_year]
+        default: id
+
+    SortDir:
+      name: sort_dir
+      in: query
+      description: Sort direction.
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Server error"
+        detail:
+          type: string
+          nullable: true
+      additionalProperties: true
+
+    HostType:
+      type: string
+      description: >
+        Host type code. Used by filters and stored on records.
+        Values observed in export mapping include:
+        glass, glass_ceramic, polycrystal, single_crystal, vapor, solution, melt, powder, aqua, other.
+      enum:
+        - glass
+        - glass_ceramic
+        - polycrystal
+        - single_crystal
+        - vapor
+        - solution
+        - melt
+        - powder
+        - aqua
+        - other
+
+    RecordsSearchResponse:
+      type: object
+      required: [ok, page, per_page, total, total_pages, items]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          example: 123
+        total_pages:
+          type: integer
+          example: 3
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/JORecordListItem"
+
+    JORecordListItem:
+      type: object
+      description: >
+        List item returned by record search. Includes summary fields and a details object.
+      properties:
+        jo_record_id:
+          type: integer
+          example: 123
+        publication_id:
+          type: integer
+          example: 45
+        re_ion:
+          type: string
+          example: "Nd"
+        host_short:
+          type: string
+          nullable: true
+        composition_short:
+          type: string
+          nullable: true
+        omega2:
+          type: string
+          nullable: true
+        omega4:
+          type: string
+          nullable: true
+        omega6:
+          type: string
+          nullable: true
+        omega2_error:
+          type: string
+          nullable: true
+        omega4_error:
+          type: string
+          nullable: true
+        omega6_error:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        concentration_lower:
+          type: string
+          nullable: true
+        concentration_upper:
+          type: string
+          nullable: true
+        concentration_unit:
+          type: string
+          nullable: true
+        concentration_note:
+          type: string
+          nullable: true
+        has_density:
+          type: integer
+          nullable: true
+        density:
+          type: string
+          nullable: true
+        sample_label:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        doi:
+          type: string
+          nullable: true
+        pub_title:
+          type: string
+          nullable: true
+        pub_authors:
+          type: string
+          nullable: true
+        pub_year:
+          type: string
+          nullable: true
+        pub_journal:
+          type: string
+          nullable: true
+        pub_url:
+          type: string
+          nullable: true
+        review_status:
+          type: string
+          nullable: true
+        details:
+          $ref: "#/components/schemas/JORecordDetails"
+      additionalProperties: true
+
+    JORecordDetails:
+      type: object
+      properties:
+        publication:
+          type: string
+          nullable: true
+        contributor:
+          type: string
+          nullable: true
+        host:
+          type: string
+          nullable: true
+        composition:
+          type: string
+          nullable: true
+        composition_components:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompositionComponent"
+        elemental_composition:
+          type: array
+          description: >
+            Array of elemental composition entries (format depends on server; may include c_at / c_wt, etc.).
+          items:
+            type: object
+            additionalProperties: true
+        jo_parameters:
+          type: object
+          properties:
+            omega2:
+              type: string
+              nullable: true
+            omega4:
+              type: string
+              nullable: true
+            omega6:
+              type: string
+              nullable: true
+            unit:
+              type: string
+              nullable: true
+          additionalProperties: true
+        extras:
+          type: string
+          nullable: true
+        loms_file_url:
+          type: string
+          nullable: true
+      additionalProperties: true
+
+    CompositionComponent:
+      type: object
+      properties:
+        component:
+          type: string
+          example: "Al2O3"
+        value:
+          type: string
+          nullable: true
+          example: "25.00"
+        unit:
+          type: string
+          nullable: true
+          enum: [mol%, wt%, at%]
+        cid:
+          type: integer
+          nullable: true
+        pubchem_name:
+          type: string
+          nullable: true
+        mw:
+          type: string
+          nullable: true
+        atom_number:
+          type: integer
+          nullable: true
+        composition:
+          type: object
+          nullable: true
+          additionalProperties: true
+      additionalProperties: true
+
+    AuditTrailResponse:
+      type: object
+      required: [ok, chain]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        chain:
+          type: array
+          description: >
+            Revision chain from current record back through is_revision_of_id, including submit/approve info.
+          items:
+            $ref: "#/components/schemas/AuditTrailEntry"
+      additionalProperties: true
+
+    AuditTrailEntry:
+      type: object
+      properties:
+        record_id:
+          type: integer
+          example: 123
+        record_date_submitted:
+          type: string
+          nullable: true
+          description: Timestamp string from DB.
+        record_date_approved:
+          type: string
+          nullable: true
+        is_revision_of_id:
+          type: integer
+          nullable: true
+        submitted_by_uid:
+          type: string
+          nullable: true
+        submitted_by_name:
+          type: string
+          nullable: true
+        approved_by_uid:
+          type: string
+          nullable: true
+        approved_by_name:
+          type: string
+          nullable: true
+      additionalProperties: true
+
+    PublicationsIndexResponse:
+      type: object
+      required: [ok, mode, count, by_doi]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        mode:
+          type: string
+          example: all_with_approved_jo_records
+        count:
+          type: integer
+          example: 42
+        by_doi:
+          type: object
+          description: Map keyed by normalized DOI.
+          additionalProperties:
+            $ref: "#/components/schemas/PublicationIndexEntry"
+      additionalProperties: true
+
+    PublicationIndexEntry:
+      type: object
+      properties:
+        doi:
+          type: string
+          nullable: true
+        publication_id:
+          type: integer
+          nullable: true
+        meta:
+          type: object
+          properties:
+            updated_at:
+              type: string
+              nullable: true
+            jo_records_count_for_doi:
+              type: integer
+              nullable: true
+            jo_record_ids_for_doi:
+              type: array
+              items:
+                type: integer
+          additionalProperties: true
+      additionalProperties: true
+
+    PublicationMetadataResponse:
+      type: object
+      required: [ok, doi, meta, refs, raw_row]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        doi:
+          type: string
+          nullable: true
+        publication_id:
+          oneOf:
+            - type: integer
+            - type: string
+          nullable: true
+          description: >
+            Returned directly from DB row (field name differs across deployments); keep flexible.
+        meta:
+          type: object
+          properties:
+            updated_at:
+              type: string
+              nullable: true
+            count:
+              type: integer
+              nullable: true
+              description: Count of refs entries when available.
+            jo_records_count_for_doi:
+              type: integer
+              nullable: true
+            jo_record_ids_for_doi:
+              type: array
+              items:
+                type: integer
+          additionalProperties: true
+        refs:
+          description: Stored OpenAlex/Crossref metadata references JSON.
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        raw_row:
+          description: Raw publications table row, returned for debugging/inspection.
+          type: object
+          additionalProperties: true
+      additionalProperties: true

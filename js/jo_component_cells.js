@@ -1,35 +1,47 @@
 (() => {
-  const subMap = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉' };
-  const revSubMap = { '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9' };
+  const subMap = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉', '+':'₊','-':'₋','=':'₌','(':'₍',')':'₎' };
+  const revSubMap = { '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9', '₊':'+','₋':'-','₌':'=','₍':'(','₎':')' };
+  const supMap = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹', '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾' };
+  const revSupMap = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9', '⁺':'+','⁻':'-','⁼':'=','⁽':'(','⁾':')' };
   const lookupCache = new Map();
   const inFlightByInput = new WeakMap();
   const debounceTimers = new WeakMap();
   const lastQByInput = new WeakMap();
-
+  const SUBSCRIPT_OPTION = true;
+  const SUPERSCRIPT_OPTION = false;
   function toSubscripts(str) { 
-    return str.replace(/[0-9]/g, d => subMap[d] || d); 
+    return str.replace(/[0-9+\-=\(\)]/g, d => subMap[d] || d); 
   }
   function fromSubscripts(str) { 
-    return str.replace(/[₀-₉]/g, s => revSubMap[s] || s); 
+    return str.replace(/[₀-₉₊₋₌₍₎]/g, s => revSubMap[s] || s); 
   }
   function toggleSubscripts(str){
-    return (/[₀-₉]/.test(str)) ? fromSubscripts(str) : toSubscripts(str);
+    return (/[₀-₉₊₋₌₍₎]/.test(str)) ? fromSubscripts(str) : toSubscripts(str);
   }
-  function applyToggleToInputSelection(input) {
+  function toSuperscripts(str) {
+    return str.replace(/[0-9+\-=\(\)]/g, d => supMap[d] || d); 
+  }
+  function fromSuperscripts(str) {
+    return str.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾]/g, s => revSupMap[s] || s); 
+  }
+  function toggleSuperscripts(str){
+    return (/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾]/.test(str)) ? fromSuperscripts(str) : toSuperscripts(str);
+  }
+  function applyToggleToInputSelection(input, scriptOption = SUBSCRIPT_OPTION) {
     const start = input.selectionStart ?? 0;
     const end   = input.selectionEnd ?? 0;
     if (end > start){
       const before = input.value.slice(0, start);
       const sel = input.value.slice(start, end);
       const after = input.value.slice(end);
-      const out = toggleSubscripts(sel);
+      const out = scriptOption ? toggleSubscripts(sel) : toggleSuperscripts(sel);
       input.value = before + out + after;
       input.selectionStart = start;
       input.selectionEnd = start + out.length;
       input.focus();
       return;
     }
-    input.value = toggleSubscripts(input.value);
+    input.value = scriptOption ? toggleSubscripts(input.value) : toggleSuperscripts(input.value);
     input.focus();
     input.selectionStart = input.selectionEnd = input.value.length;
   }
@@ -169,13 +181,23 @@
       wrap.className = 'jo-cell-wrap';
       input.parentNode.insertBefore(wrap, input);
       wrap.appendChild(input);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'jo-cell-btn';
-      btn.title = 'Toggle subscripts';
-      btn.textContent = '₂';
-      wrap.appendChild(btn);
-      btn.addEventListener('click', () => applyToggleToInputSelection(input));
+
+      const btnSub = document.createElement('button');
+      btnSub.type = 'button';
+      btnSub.className = 'jo-cell-btn';
+      btnSub.title = 'Toggle subscripts';
+      btnSub.textContent = '₂';
+      wrap.appendChild(btnSub);
+      btnSub.addEventListener('click', () => applyToggleToInputSelection(input, SUBSCRIPT_OPTION));
+
+      const btnSup = document.createElement('button');
+      btnSup.type = 'button';
+      btnSup.className = 'jo-cell-btn-sup';
+      btnSup.title = 'Toggle superscripts';
+      btnSup.textContent = '²';
+      wrap.appendChild(btnSup);
+      btnSup.addEventListener('click', () => applyToggleToInputSelection(input, SUPERSCRIPT_OPTION));
+
       const btnPT = document.createElement('button');
       btnPT.type = 'button';
       btnPT.className = 'jo-cell-btn-PT';
@@ -190,7 +212,7 @@
       if (inGrid) {
         const icn = document.createElement("span");
         icn.className = "doi-status";
-        icn.style.cssText = "transform: translateY(-50%) translateX(-230%);";
+        icn.style.cssText = "transform: translateY(-50%) translateX(-345%);";
         icn.style.setProperty("pointer-events", "all");
         wrap.appendChild(icn);
         input.addEventListener('input', () => {
@@ -201,7 +223,7 @@
         input.addEventListener('keydown', (e) => {
           if (e.ctrlKey && e.key === '.') {
             e.preventDefault();
-            applyToggleToInputSelection(input);
+            applyToggleToInputSelection(input, SUBSCRIPT_OPTION);
           }
           if (e.key === 'Enter') {
             schedulePubchemCheck(input, icn, 0);
@@ -212,7 +234,8 @@
   }
 
   enhanceComponentInputs();
-  document.getElementById('comp-subscript-btn').addEventListener('click', () => applyToggleToInputSelection(document.getElementById('comp-text')));
+  document.getElementById('comp-subscript-btn').addEventListener('click', () => applyToggleToInputSelection(document.getElementById('comp-text'), SUBSCRIPT_OPTION));
+  document.getElementById('comp-superscript-btn').addEventListener('click', () => applyToggleToInputSelection(document.getElementById('comp-text'), SUPERSCRIPT_OPTION));
   const gridBody = document.getElementById('comp-grid-body');
   if (gridBody) {
     const obs = new MutationObserver(() => enhanceComponentInputs(gridBody));

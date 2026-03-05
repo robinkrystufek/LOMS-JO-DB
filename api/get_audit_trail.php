@@ -1,6 +1,6 @@
 <?php
 /**
- * api/get_audit_trail.php
+ * get_audit_trail.php
  *
  * Returns the audit trail for a JO record.
  * Server-side recursion follows jo_records.is_revision_of_id until NULL/0,
