@@ -95,8 +95,12 @@ function jo_components_update_from_out(PDO $pdo, string $uiName, array $out, arr
   $id = $idStmt->fetchColumn();
   return $id ? (int)$id : 0;
 }
-function normalize_subscripts(string $s): string {
-  static $map = [
+function normalize_subscripts(string $s, bool $chargeOnly): string {
+  if ($chargeOnly) {
+    $map = ['⁺'=>'','⁻'=>''];
+    return strtr($s, $map);
+  }
+  $map = [
     '₀'=>'0','₁'=>'1','₂'=>'2','₃'=>'3','₄'=>'4','₅'=>'5','₆'=>'6','₇'=>'7','₈'=>'8','₉'=>'9',
     '⁰'=>'','¹'=>'','²'=>'','³'=>'','⁴'=>'','⁵'=>'','⁶'=>'','⁷'=>'','⁸'=>'','⁹'=>'',
     '⁺'=>'','⁻'=>''
@@ -105,7 +109,7 @@ function normalize_subscripts(string $s): string {
 }
 function looks_like_formula(string $raw): bool {
   if (preg_match('/\s/u', $raw)) return false;
-  $s = normalize_subscripts($raw);
+  $s = normalize_subscripts($raw, false);
   if (preg_match('/[,\-\/]/u', $s)) return false;
   if (preg_match('/^(?:[A-Z][a-z]?\d*)+(?:\((?:[A-Z][a-z]?\d*)+\)\d*)*$/u', $s)) return true;
   if (preg_match('/\d/u', $s) && preg_match('/[A-Z][a-z]?/u', $s) && !preg_match('/[a-z]{3,}/u', $s)) return true;
@@ -190,8 +194,8 @@ function pubchem_fetch_properties(string $route, string $termRaw, string $propsC
   }
   return ['data' => $data, 'final_url' => $pollUrl, 'listkey' => $listKey, 'attempts' => $maxPolls];
 }
-function normalize_formula_string(string $s): string {
-  $s = normalize_subscripts($s);
+function normalize_formula_string(string $s, bool $chargeOnly): string {
+  $s = normalize_subscripts($s, $chargeOnly);
   $s = str_replace(["·", "∙", "⋅"], ".", $s);
   $s = preg_replace('/\s+/u', '', $s);
   return $s;
@@ -210,10 +214,12 @@ function atomic_weights(): array {
 }
 class FormulaParser {
   private string $s;
+  private string $raw;
   private int $i = 0;
 
-  public function __construct(string $s) {
+  public function __construct(string $s, string $raw) {
     $this->s = $s;
+    $this->raw = $raw;
     $this->i = 0;
   }
   private function peek(): ?string {
@@ -242,29 +248,25 @@ class FormulaParser {
       $save = $this->i;
       $this->i++;
       $fracStart = $this->i;
-      while (($c = $this->peek()) !== null && $c >= '0' && $c <= '9') $this->i++;
-      if ($this->i > $fracStart) {
-        $after = $this->peek();
-        if ($this->is_count_terminator($after)) {
-          $num = substr($this->s, $start, $this->i - $start);
-          return (float)$num;
+      while (($c = $this->peek()) !== null && $c >= '0' && $c <= '9') {
+        $rc = mb_substr($this->raw, $this->i, 1, 'UTF-8');
+        if (!in_array($rc, ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'], true)) {
+          break;
         }
+        $this->i++;
+      }
+      if ($this->i > $fracStart) {
+        $num = substr($this->s, $start, $this->i - $start);
+        return (float)$num;
       }
       $this->i = $save;
     }
     return (float)$int;
-  }  
+  }
   private function merge_counts(array &$a, array $b, float $mult = 1.0): void {
     foreach ($b as $el => $n) {
       $a[$el] = ($a[$el] ?? 0.0) + $n * $mult;
     }
-  }
-  private function is_count_terminator(?string $c): bool {
-    if ($c === null) return true;
-    if ($c === ')' || $c === ']') return true;
-    if ($c === '+' || $c === '·' || $c === '.') return true;
-    if ($c === ' ' || $c === "\t" || $c === "\n" || $c === "\r") return true;
-    return false;
   }
   private function parse_fragment(): array {
     $mult = $this->parse_int();
@@ -361,7 +363,6 @@ class FormulaParser {
       return;
     }
   }
-
   public function parse_all(): array {
     $total = [];
     $this->skip_separators();
@@ -382,10 +383,12 @@ class FormulaParser {
     return $total;
   }
 }
-function calculate_properties($nomalizedFormula) {
+function calculate_properties($formula) {
   $weights = atomic_weights();
+  $nomalizedFormula = normalize_formula_string($formula, false);
+  $trimmedFormula = normalize_formula_string($formula, true);
   try {
-    $parser = new FormulaParser($nomalizedFormula);
+    $parser = new FormulaParser($nomalizedFormula, $trimmedFormula);
     $comp = $parser->parse_all();
     $mw = 0.0;
     $atoms = 0;
@@ -404,7 +407,9 @@ function calculate_properties($nomalizedFormula) {
     ksort($comp);
     return [
       'ok' => true,
+      'query' => $formula,
       'normalized' => $nomalizedFormula,
+      'raw_trimmed' => $trimmedFormula,
       'molecular_weight' => $mw,
       'total_atoms' => $atoms,
       'composition' => $comp,
@@ -425,7 +430,7 @@ function pubchem_fetch_record(int $cid, string $recordType): array {
 }
 
 $raw  = $q;
-$norm = normalize_subscripts($raw);
+$norm = normalize_subscripts($raw, false);
 $__jo_pdo = null;
 $dsn = "mysql:host={$DB_HOST};dbname={$DB_NAME};charset={$DB_CHARSET}";
 $options = [
@@ -495,7 +500,7 @@ if (!(isset($data['PropertyTable']['Properties']) && is_array($data['PropertyTab
 
 $propsArr = $data['PropertyTable']['Properties'] ?? null;
 if (!is_array($propsArr) || !count($propsArr)) {
-  $calculatedProperties = calculate_properties(normalize_formula_string($raw));
+  $calculatedProperties = calculate_properties($raw);
   $out = [
     'ok' => false,
     'query' => $raw,
@@ -574,10 +579,10 @@ foreach ($propsArr as $p) {
   if (count($hits) >= 10) break;
 }
 
-if($route == 'formula') $norm = normalize_formula_string($raw);
-elseif ($formula ?? null) $norm = normalize_formula_string($formula);
-else $norm = normalize_formula_string($raw);
-$calculatedProperties = calculate_properties($norm);
+if($route == 'formula') $calculatedProperties = calculate_properties($raw);
+elseif ($formula ?? null) $calculatedProperties = calculate_properties($formula);
+else $calculatedProperties = calculate_properties($raw);
+
 
 $out = [
   'ok' => ($cid > 0),

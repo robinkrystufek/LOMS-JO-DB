@@ -97,7 +97,7 @@ try {
   jo_apply_badge_filters($_GET, $where, $params);
   jo_apply_publication_filters($_GET, $where);
   jo_apply_advanced_composition_rules($_GET, $where, $params);
-  $where[] = "r.review_status='approved'";
+  jo_apply_id_filter($_GET, $where, $params);
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
   $sql = "
@@ -189,7 +189,7 @@ try {
     $row = [
       $r['jo_record_id'],
       $r['pub_doi'] ?? null,
-      $r['pub_title'] ?? null,
+      str_replace(["\r\n", "\r", "\n"], "", (string)($r['pub_title'] ?? '')),
       $r['pub_journal'] ?? null,
       $r['pub_year'] ?? null,
       $r['pub_url'] ?? null,

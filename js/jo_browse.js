@@ -141,17 +141,19 @@ function estimateDecimals(x) {
   return m ? m[1].length : 0;
 }
 function columnPrecision(rows, getNum, maxDecimals = 3) {
-  const EPS = 1e-9;
+  const EPS = 1e-12;
   const nums = (rows || [])
-    .map(r => getNum(r))
-    .filter(v => Number.isFinite(v));
+    .map(r => Number(getNum(r)))
+    .filter(v => Number.isFinite(v) && Math.abs(v) > EPS)
+    .map(v => Math.abs(v));
   if (!nums.length) return 0;
-  const allIntegers = nums.every(v => Math.abs(v - Math.round(v)) < EPS);
-  if (allIntegers) return 0;
-  const decs = nums.map(estimateDecimals);
-  let p = Math.min(...decs);
-  if (p === 0 && decs.some(d => d > 0)) p = 1;
-  return Math.min(p, maxDecimals);
+  const minAbs = Math.min(...nums);
+  const order = Math.floor(Math.log10(minAbs));
+  const minSig = 2;
+  let p = (minSig - 1) - order;
+  if (!Number.isFinite(p)) p = 0;
+  p = Math.max(0, Math.min(p, maxDecimals));
+  return p;
 }
 function render(items) {
   tbody.innerHTML = '';
@@ -194,11 +196,14 @@ function render(items) {
     det.className = 'jo-db-details-row jo-db-hidden';
     const comps = (d.composition_components || []);
     const pValue = columnPrecision(comps, c => Number(c.value), 3);
+    const pMol = columnPrecision(comps, c => Number(c.c_mol), 3);
+    const pWt = columnPrecision(comps, c => Number(c.c_wt), 3);
+    const pAt = columnPrecision(comps, c => Number(c.c_at), 3);
     const compRows = comps.map(c => {
       const value    = fmtFixed(Number(c.value), pValue);
-      const cMol     = fmtFixed(c.c_mol, Math.max (pValue, 1));
-      const cWt      = fmtFixed(c.c_wt,  Math.max (pValue, 1));
-      const cAt      = fmtFixed(c.c_at,  Math.max (pValue, 1));
+      const cMol     = fmtFixed(c.c_mol, pMol);
+      const cWt      = fmtFixed(c.c_wt,  pWt);
+      const cAt      = fmtFixed(c.c_at,  pAt);
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -251,8 +256,8 @@ function render(items) {
     const pElementsAt = columnPrecision(elements, c => Number(c.c_at), 3);
     const pElementsWt = columnPrecision(elements, c => Number(c.c_wt), 3);
     const elementRows = elements.map(c => {
-      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt-1, 1));
-      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pElementsAt-1, 1));
+      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt, 1));
+      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pElementsAt, 1));
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -495,7 +500,7 @@ function toggleDetailsFor(btn) {
   }
 }
 function renderPager(page, totalPages, total) {
-  countEl.textContent = `${total} entries`;
+  countEl.textContent = total ? (total == 1 ? '1 entry' : `${total} entries`) : 'No entries found';
   setResultsLoading(false);
   const pages = [];
   const start = Math.max(1, page - 2);
@@ -563,6 +568,7 @@ async function load(page) {
     sort_dir: String(sortDir),
     ...getFilters()
   });
+  
   const adv = window.__JO_ADV_RULES__?.getRules ? window.__JO_ADV_RULES__.getRules() : [];
   adv.forEach(r => {
     params.append('comp_component[]', r.component);
@@ -570,6 +576,23 @@ async function load(page) {
     params.append('comp_value[]', r.value);
     params.append('comp_unit[]', r.unit);
   });
+  if (window.getQueryParams) {
+    const urlParams = window.getQueryParams();
+    Object.entries(urlParams).forEach(([key, value]) => {
+      if (value === null || value === '') return;
+      if (key.endsWith('[]')) {
+        params.delete(key);
+        if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, v));
+        } 
+        else {
+          params.append(key, value);
+        }
+      } else {
+        params.set(key, value);
+      }
+    });
+  }
   const url = `api/browse_records.php?${params.toString()}`;
   const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
   const data = await res.json();
@@ -599,6 +622,8 @@ function resetSearchInput(reload = true) {
   document.getElementById('filter-composition-element').value = '';
   sortBy = 'id';
   sortDir = 'desc'; 
+  const hadParams = window.hasUrlQuery();
+  if (hadParams) window.clearUrlQuery();
   if(reload){
     window.__JO_ADV_RULES__?.clearBackground?.();
     updateSortIndicators();

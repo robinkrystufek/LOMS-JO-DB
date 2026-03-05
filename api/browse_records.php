@@ -57,7 +57,6 @@ $orderDir  = ($sortDirReq === 'asc') ? 'ASC' : 'DESC';
 
 $reIon        = trim((string)($_GET['re_ion'] ?? ''));
 $hostType     = trim((string)($_GET['host_type'] ?? ''));
-$hostFamily   = trim((string)($_GET['host_family'] ?? ''));
 $compositionQ = trim((string)($_GET['composition_q'] ?? ''));
 $elementQ     = trim((string)($_GET['element_q'] ?? ''));
 try {
@@ -77,7 +76,6 @@ try {
     $where[] = "r.re_ion LIKE '%".$reIon."%'"; 
   }
   if ($hostType !== '') { $where[] = "r.host_type = :host_type"; $params[':host_type'] = $hostType; }
-  if ($hostFamily !== '') { $where[] = "r.host_family = :host_family"; $params[':host_family'] = $hostFamily; }
   if ($compositionQ !== '') {
     $where[] = "(
       r.re_ion LIKE :composition_q_re_ion OR 
@@ -110,7 +108,8 @@ try {
   jo_apply_badge_filters($_GET, $where, $params);
   jo_apply_publication_filters($_GET, $where);
   jo_apply_advanced_composition_rules($_GET, $where, $params);
-  $where[] = "r.review_status='approved'";
+  jo_apply_id_filter($_GET, $where, $params);
+
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
   $stCount = $pdo->prepare("
     SELECT COUNT(*) AS c
@@ -178,6 +177,7 @@ try {
       r.dispersion_b,
       r.dispersion_c,
       r.extra_notes,
+      r.review_status,
       p.doi AS pub_doi,
       p.title AS pub_title,
       p.journal AS pub_journal,
@@ -335,6 +335,7 @@ try {
       'pub_year' => $r['pub_year'] ?? '',
       'pub_journal' => $r['pub_journal'] ?? '',
       'pub_url' => $r['pub_url'] ?? '',
+      'review_status' => $r['review_status'] ?? '',
       'details' => [
         'publication' => $pubLine,
         'contributor' => $r['contributor_info'] ?? '',

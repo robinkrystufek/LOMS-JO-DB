@@ -112,6 +112,25 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
     }
   }
 }
+function jo_apply_id_filter(array $get, array &$where, array &$params) {
+  $recordId = trim((string)($get['record_id'] ?? ''));
+  if ($recordId !== '' && preg_match('/^\d+(,\s*\d+)*$/', $recordId)) {
+    $ids = array_filter(array_map('trim', explode(',', $recordId)));
+    $ids = array_values(array_filter($ids, function ($id) {
+        return ctype_digit($id);
+    }));
+    if (!empty($ids)) {
+        $placeholders = [];
+        foreach ($ids as $i => $id) {
+            $ph = ":record_id_$i";
+            $placeholders[] = $ph;
+            $params[$ph] = (int)$id;
+        }
+        $where[] = "r.id IN (" . implode(',', $placeholders) . ")";
+    }
+  }
+  else $where[] = "r.review_status='approved'";
+}
 function parseComposition($composition): ?array {
     if (!$composition) return null;
     if (is_string($composition)) {
