@@ -8,7 +8,7 @@
  * Used by browse and export endpoints.
  */
 declare(strict_types=1);
-function extractFilePath(?string $text): ?string {
+function extract_file_path(?string $text): ?string {
   if (!$text) return null;
   if (preg_match_all('/\[loms_file_path=([^\]]+)\]/', $text, $m, PREG_SET_ORDER)) {
     $last = end($m);
@@ -16,19 +16,35 @@ function extractFilePath(?string $text): ?string {
   }
   return null;
 }
-function stripDBTags(?string $text): ?string {
+function strip_db_tags(?string $text): ?string {
   if (!$text) return null;
   return trim(preg_replace('/\[(?:loms|Revision)[^\]]+\]/', '', $text));
 }
-function jo_apply_publication_filters(array $get, array &$where): void {
+function apply_filters(array $get, array &$where, array &$params): void {
+  apply_publication_filter($get, $where, $params);
+  apply_badge_filter($get, $where, $params);
+  apply_composition_filter($get, $where, $params);
+  apply_advanced_composition_filter($get, $where, $params);
+  apply_id_filter($get, $where, $params);
+}
+function apply_publication_filter(array $get, array &$where, array &$params): void {
   $pubDoiQ     = trim((string)($get['pub_doi_q'] ?? ''));
   $pubTitleQ   = trim((string)($get['pub_title_q'] ?? ''));
   $pubAuthorsQ = trim((string)($get['pub_authors_q'] ?? ''));
-  if ($pubDoiQ !== '')     $where[] = "p.doi LIKE '%" . $pubDoiQ . "%'";
-  if ($pubTitleQ !== '')   $where[] = "p.title LIKE '%" . $pubTitleQ . "%'";
-  if ($pubAuthorsQ !== '') $where[] = "p.authors LIKE '%" . $pubAuthorsQ . "%'";
+  if ($pubDoiQ !== '') {
+    $where[] = "p.doi LIKE :pubDoiQ";
+    $params[':pubDoiQ'] = "%" . $pubDoiQ . "%";
+  }
+  if ($pubTitleQ !== '') {
+    $where[] = "p.title LIKE :pubTitleQ";
+    $params[':pubTitleQ'] = "%" . $pubTitleQ . "%";
+  }
+  if ($pubAuthorsQ !== '') {
+    $where[] = "p.authors LIKE :pubAuthorsQ";
+    $params[':pubAuthorsQ'] = "%" . $pubAuthorsQ . "%";
+  }
 }
-function jo_apply_badge_filters(array $get, array &$where, array &$params): void {
+function apply_badge_filter(array $get, array &$where, array &$params): void {
   $badgeN       = isset($get['badge_n']) ? (int)$get['badge_n'] : -1;
   $badgeCjo     = isset($get['badge_cjo']) ? (int)$get['badge_cjo'] : -1;
   $badgeSigma   = isset($get['badge_sigmafs']) ? (int)$get['badge_sigmafs'] : -1;
@@ -43,24 +59,60 @@ function jo_apply_badge_filters(array $get, array &$where, array &$params): void
   if ($badgeRE >= 0)       $where[] = "r.reduced_element_option = :b_re";
   if ($badgeLOMS >= 0)     $where[] = "r.recalculated_loms_option = :b_loms";
   if ($badgeDensity >= 0)  $where[] = "r.has_density = :b_density";
-
   if ($badgeN >= 0) {
     if ($badgeN === 2) {
       $where[] = "r.refractive_index_option IN (2,3)";
     } else {
       $where[] = "r.refractive_index_option = :b_n";
+      $params[':b_n'] = $badgeN;
     }
   }
 
-  if ($badgeCjo >= 0)      $params[':b_cjo']    = $badgeCjo;
-  if ($badgeSigma >= 0)    $params[':b_sigma']  = $badgeSigma;
-  if ($badgeM1 >= 0)       $params[':b_m1']     = $badgeM1;
-  if ($badgeRE >= 0)       $params[':b_re']     = $badgeRE;
-  if ($badgeLOMS >= 0)     $params[':b_loms']   = $badgeLOMS;
-  if ($badgeDensity >= 0)  $params[':b_density']= $badgeDensity;
-  if ($badgeN >= 0 && $badgeN !== 2) $params[':b_n'] = $badgeN;
+  if ($badgeCjo >= 0)      $params[':b_cjo']     = $badgeCjo;
+  if ($badgeSigma >= 0)    $params[':b_sigma']   = $badgeSigma;
+  if ($badgeM1 >= 0)       $params[':b_m1']      = $badgeM1;
+  if ($badgeRE >= 0)       $params[':b_re']      = $badgeRE;
+  if ($badgeLOMS >= 0)     $params[':b_loms']    = $badgeLOMS;
+  if ($badgeDensity >= 0)  $params[':b_density'] = $badgeDensity;
 }
-function jo_apply_advanced_composition_rules(array $get, array &$where, array &$params): void {
+function apply_composition_filter(array $get, array &$where, array &$params) {
+  $reIon        = trim((string)($get['re_ion'] ?? ''));
+  $hostType     = trim((string)($get['host_type'] ?? ''));
+  $compositionQ = trim((string)($get['composition_q'] ?? ''));
+  $elementQ     = trim((string)($get['element_q'] ?? ''));
+  if ($reIon !== '') { $where[] = "r.re_ion = :re_ion"; $params[':re_ion'] = $reIon; }
+  if ($hostType !== '') { $where[] = "r.host_type = :host_type"; $params[':host_type'] = $hostType; }
+  if ($compositionQ !== '') {
+    $where[] = "(
+      r.re_ion LIKE :composition_q_re_ion OR 
+      r.sample_label LIKE :composition_q_label OR 
+      r.composition_text LIKE :composition_q_text OR 
+      EXISTS (
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE :composition_q_component
+      ))";
+    $params[':composition_q_re_ion'] = '%' . $compositionQ . '%';
+    $params[':composition_q_label'] = '%' . $compositionQ . '%';
+    $params[':composition_q_text'] = '%' . $compositionQ . '%';
+    $params[':composition_q_component'] = '%' . $compositionQ . '%';
+  }
+  if ($elementQ !== '') {
+    $elementQ = ucfirst(strtolower(trim($elementQ)));
+    if (preg_match('/^[A-Z][a-z]?$/', $elementQ)) {
+      $where[] = "(
+        REGEXP_LIKE(r.re_ion, :composition_regex, 'c')
+        OR EXISTS (
+          SELECT 1 FROM jo_composition_components cc
+          WHERE cc.jo_record_id = r.id
+            AND REGEXP_LIKE(cc.component, :component_regex, 'c')
+        ))";
+      $params[':composition_regex'] = $elementQ . '(?![a-z])';
+      $params[':component_regex']   = $elementQ . '(?![a-z])';
+    }
+  }
+}
+function apply_advanced_composition_filter(array $get, array &$where, array &$params): void {
   $ruleComp = $get['comp_component'] ?? [];
   $ruleOp   = $get['comp_op'] ?? [];
   $ruleVal  = $get['comp_value'] ?? [];
@@ -112,7 +164,7 @@ function jo_apply_advanced_composition_rules(array $get, array &$where, array &$
     }
   }
 }
-function jo_apply_id_filter(array $get, array &$where, array &$params) {
+function apply_id_filter(array $get, array &$where, array &$params) {
   $recordId = trim((string)($get['record_id'] ?? ''));
   if ($recordId !== '' && preg_match('/^\d+(,\s*\d+)*$/', $recordId)) {
     $ids = array_filter(array_map('trim', explode(',', $recordId)));
@@ -131,7 +183,7 @@ function jo_apply_id_filter(array $get, array &$where, array &$params) {
   }
   else $where[] = "r.review_status='approved'";
 }
-function parseComposition($composition): ?array {
+function parse_composition($composition): ?array {
     if (!$composition) return null;
     if (is_string($composition)) {
         $composition = json_decode($composition, true);
@@ -148,13 +200,13 @@ function parseComposition($composition): ?array {
     return $out ?: null;
 }
 function atomCountFromComposition($composition, float $fallbackAtomNumber = 0.0): float {
-    $comp = parseComposition($composition);
+    $comp = parse_composition($composition);
     if (!$comp) return $fallbackAtomNumber;
     $sum = 0.0;
     foreach ($comp as $cnt) $sum += (float)$cnt;
     return $sum > 0 ? $sum : $fallbackAtomNumber;
 }
-function normalizeComposition(array &$components): array {
+function normalize_composition(array &$components): array {
   if (!$components) return [];
   $EPS = 1e-12;
   $moles = [];
@@ -212,7 +264,7 @@ function normalizeComposition(array &$components): array {
   foreach ($components as $i => $c) {
     $n = $moles[$i];
     if ($n <= 0) continue;
-    $comp = parseComposition($c['composition'] ?? null);
+    $comp = parse_composition($c['composition'] ?? null);
     if (!$comp) continue;
     foreach ($comp as $el => $cnt) {
       $a = $n * (float)$cnt;
@@ -258,4 +310,27 @@ function atomic_weights(): array {
     'Hf'=>178.49,'Ta'=>180.94788,'W'=>183.84,'Re'=>186.207,'Os'=>190.23,'Ir'=>192.217,'Pt'=>195.084,'Au'=>196.966569,'Hg'=>200.59,'Tl'=>204.3833,'Pb'=>207.2,'Bi'=>208.98040,'Po'=>209.0,'At'=>210.0,'Rn'=>222.0,
     'Fr'=>223.0,'Ra'=>226.0,'Ac'=>227.0,'Th'=>232.03806,'Pa'=>231.03588,'U'=>238.02891,
   ];
+}
+function host_type_label(?string $v): ?string {
+  if ($v === null || $v === '') return null;
+  $map = [
+    'glass'          => 'Glass (G)',
+    'glass_ceramic'  => 'Glass-ceramic (GC)',
+    'polycrystal'    => 'Polycrystalline (PC)',
+    'single_crystal' => 'Single-crystalline (SC)',
+    'vapor'          => 'Vapor (V)',
+    'solution'       => 'Solution (S)',
+    'melt'           => 'Melt (M)',
+    'powder'         => 'Powder (P)',
+    'aqua'           => 'Aqueous (A)',
+    'other'          => 'Other',
+  ];
+  return $map[$v] ?? $v;
+}
+function conc_unit_label(?string $v): ?string {
+  if ($v === null || $v === '') return null;
+  $map = [
+    'ions/cm3' => 'ions/cm³',
+  ];
+  return $map[$v] ?? $v;
 }

@@ -178,7 +178,7 @@ function render(items) {
       <td>${esc(it.re_ion)}</td>
       <td${esc(it.concentration_note) != "" && !it.concentration ? ' style="overflow: visible"' : ''}>${esc(it.concentration)}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
       <td>${esc(compositionShorthand(it.details.composition_components) || it.details.composition || it.composition)}</td>
-      <td>${esc(it.details.host || it.host)}</td>
+      <td>${esc(it.host)}</td>
       <td>${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''}</td>
       <td>${esc(fmtNum(it.omega4))}${it.omega4_error != null ? ` ± ${esc(fmtNum(it.omega4_error))}` : ''}</td>
       <td>${esc(fmtNum(it.omega6))}${it.omega6_error != null ? ` ± ${esc(fmtNum(it.omega6_error))}` : ''}</td>
@@ -323,7 +323,7 @@ function render(items) {
             </dd>
             <dt>Host</dt>
             <dd>
-              ${esc(d.host || it.host)}
+              ${esc(it.host)}
             </dd>
             <dt>Refractive index</dt>
             <dd>
@@ -334,7 +334,7 @@ function render(items) {
               Ω₂ = ${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''},
               Ω₄ = ${esc(fmtNum(it.omega4))}${it.omega4_error != null ? ` ± ${esc(fmtNum(it.omega4_error))}` : ''},
               Ω₆ = ${esc(fmtNum(it.omega6))}${it.omega6_error != null ? ` ± ${esc(fmtNum(it.omega6_error))}` : ''}
-              (${esc(d.jo_parameters?.units || '10⁻²⁰ cm²')})
+              (10⁻²⁰ cm²)
             </dd>
             <dt>Combinatorial JO analysis</dt>
             <dd>
@@ -364,7 +364,7 @@ function render(items) {
             </dd>
             <dt>Composition (as reported)</dt>
             <dd>
-              ${esc(d.composition || it.composition)}
+              ${esc(it.composition)}
             </dd>
             <dt>Reduced elements included</dt>
             <dd>

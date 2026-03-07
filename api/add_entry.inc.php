@@ -47,14 +47,14 @@ function normalize_utf8(string $s): string {
 }
 function parse_JSON_POST($raw): string {
   if (is_string($raw) && $raw !== '') {
-      $raw = urldecode($raw);
-      $decoded = json_decode($raw, true);
-      if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-          return json_encode(
-              $decoded,
-              JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-          );
-      }
+    $raw = urldecode($raw);
+    $decoded = json_decode($raw, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+      return json_encode(
+        $decoded,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+      );
+    }
   }
   return '{}';
 }
