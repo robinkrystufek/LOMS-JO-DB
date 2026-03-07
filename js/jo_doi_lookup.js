@@ -74,7 +74,7 @@
     const wait = lookupIntervalMS - (now - lastLookupTime);
     if (wait > 0) await lookupSleep(wait);
     try {
-      const resp = await fetch("api/doi_lookup.php?doi=" + encodeURIComponent(doi), {
+      const resp = await fetch("api/lookup_doi.php?doi=" + encodeURIComponent(doi), {
         method: "GET",
         headers: { "Accept": "application/json" },
         signal: inFlight.signal

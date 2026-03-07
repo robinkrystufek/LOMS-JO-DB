@@ -1,6 +1,6 @@
 <?php
 /**
- * jo_records.inc.php
+ * records.inc.php
  *
  * Shared query and filtering logic for JO records.
  * Builds SQL conditions for publication filters,
@@ -16,9 +16,9 @@ function extractFilePath(?string $text): ?string {
   }
   return null;
 }
-function stripFilePathTag(?string $text): ?string {
+function stripDBTags(?string $text): ?string {
   if (!$text) return null;
-  return preg_replace('/\[loms_file_path=[^\]]+\]/', '', $text);
+  return trim(preg_replace('/\[(?:loms|Revision)[^\]]+\]/', '', $text));
 }
 function jo_apply_publication_filters(array $get, array &$where): void {
   $pubDoiQ     = trim((string)($get['pub_doi_q'] ?? ''));

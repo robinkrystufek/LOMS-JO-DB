@@ -265,3 +265,119 @@ function fetchComponentDetails($compRows, ?PDO $pdo = null) {
   }
   return $compRows;
 }
+function detect_allowed_upload(string $tmpPath, string $originalName): array {
+  $name = strtolower($originalName);
+  $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+  $allowedExts = ['csv', 'txt', 'xls', 'xlsx', 'zip'];
+  if (!in_array($ext, $allowedExts, true)) {
+      json_fail('Unsupported file type.', 400);
+  }
+  $fi = new finfo(FILEINFO_MIME_TYPE);
+  $mime = $fi->file($tmpPath) ?: 'application/octet-stream';
+  $allowedMimes = [
+      'csv' => [
+          'text/plain',
+          'text/csv',
+          'application/csv',
+          'application/vnd.ms-excel',
+      ],
+      'txt' => [
+          'text/plain',
+      ],
+      'xls' => [
+          'application/vnd.ms-excel',
+          'application/octet-stream',
+      ],
+      'xlsx' => [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/zip',
+          'application/octet-stream',
+      ],
+      'zip' => [
+          'application/zip',
+          'application/x-zip-compressed',
+          'application/octet-stream',
+      ]
+  ];
+  if (!in_array($mime, $allowedMimes[$ext], true)) {
+      json_fail("File content does not match .$ext upload.", 400);
+  }
+  if ($ext === 'xlsx') {
+      validate_xlsx_structure($tmpPath);
+  } elseif ($ext === 'zip') {
+      validate_zip_contents($tmpPath);
+  }
+  return [$ext, $mime];
+}
+function validate_xlsx_structure(string $path): void {
+  $zip = new ZipArchive();
+  if ($zip->open($path) !== true) {
+      json_fail('Invalid XLSX file.', 400);
+  }
+  $hasContentTypes = false;
+  $hasWorkbook = false;
+  for ($i = 0; $i < $zip->numFiles; $i++) {
+      $name = $zip->getNameIndex($i);
+      if ($name === '[Content_Types].xml') $hasContentTypes = true;
+      if ($name === 'xl/workbook.xml') $hasWorkbook = true;
+  }
+  $zip->close();
+  if (!$hasContentTypes || !$hasWorkbook) {
+      json_fail('Invalid XLSX structure.', 400);
+  }
+}
+function validate_zip_contents(string $path): void {
+  $zip = new ZipArchive();
+  if ($zip->open($path) !== true) {
+      json_fail('Invalid ZIP archive.', 400);
+  }
+  $allowedInnerExts = ['csv', 'txt', 'xls', 'xlsx'];
+  $maxFiles = 40;
+  $maxTotalUncompressed = 20 * 1024 * 1024;
+  $total = 0;
+  if ($zip->numFiles > $maxFiles) {
+      $zip->close();
+      json_fail('ZIP contains too many files.', 400);
+  }
+  for ($i = 0; $i < $zip->numFiles; $i++) {
+    $stat = $zip->statIndex($i);
+    $name = $stat['name'] ?? '';
+    $normalized = str_replace('\\', '/', $name);
+    if (
+        $normalized === '' ||
+        str_starts_with($normalized, '/') ||
+        str_contains($normalized, '../') ||
+        str_contains($normalized, '..\\')
+    ) {
+        $zip->close();
+        json_fail('Unsafe ZIP entry path.', 400);
+    }
+    if (str_ends_with($normalized, '/')) {
+        continue;
+    }
+    if (is_ignorable_archive_entry($normalized)) {
+        continue;
+    }
+    $innerExt = strtolower(pathinfo($normalized, PATHINFO_EXTENSION));
+    if (!in_array($innerExt, $allowedInnerExts, true)) {
+        $zip->close();
+        json_fail("ZIP contains unsupported file: {$normalized}", 400);
+    }
+    $size = (int)($stat['size'] ?? 0);
+    $total += $size;
+    if ($total > $maxTotalUncompressed) {
+        $zip->close();
+        json_fail('ZIP uncompressed content too large.', 400);
+    }
+  }
+  $zip->close();
+}
+function is_ignorable_archive_entry(string $path): bool {
+  $normalized = str_replace('\\', '/', $path);
+  $base = strtolower(basename($normalized));
+  if ($base === '.ds_store') return true;
+  if ($base === 'thumbs.db') return true;
+  if ($base === 'desktop.ini') return true;
+  if (str_starts_with($normalized, '__MACOSX/')) return true;
+  return false;
+}
