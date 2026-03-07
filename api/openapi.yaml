@@ -13,6 +13,8 @@ tags:
     description: Search, retrieve, export, and audit trail for JO records.
   - name: Publications
     description: Publication metadata and DOI index for publications with approved JO records.
+  - name: Components
+    description: Search and retrieve chemical components linked to approved JO records.
 
 paths:
   /records:
@@ -354,6 +356,86 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /records/csv:
+    get:
+      tags: [Records]
+      summary: Export JO records search result as CSV
+      description: >
+        Exports record search results as CSV using the same browse/filter logic as the records endpoint.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/SortDir"
+        - name: re_ion
+          in: query
+          description: Filter by rare-earth ion (substring match).
+          schema:
+            type: string
+            example: Er
+        - name: host_type
+          in: query
+          description: Filter by host type (exact match).
+          schema:
+            $ref: "#/components/schemas/HostType"
+        - name: composition_q
+          in: query
+          description: >
+            Free-text composition query; matches ion, sample label, composition text,
+            or any composition component.
+          schema:
+            type: string
+            example: "Yb:LuAG"
+        - name: element_q
+          in: query
+          description: >
+            Element symbol (e.g. "O", "F", "Yb") used for element-aware matching.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{1,2}$"
+            example: O
+        - name: pub_doi_q
+          in: query
+          description: Publication DOI free-text filter.
+          schema:
+            type: string
+            example: "10.1063/1.432659"
+        - name: pub_title_q
+          in: query
+          description: Publication title free-text filter.
+          schema:
+            type: string
+        - name: pub_authors_q
+          in: query
+          description: Publication authors free-text filter.
+          schema:
+            type: string
+        - name: badges
+          in: query
+          description: >
+            Optional badge filtering (implementation-defined; passed through to server).
+          schema:
+            type: string
+        - name: adv
+          in: query
+          description: >
+            Optional advanced composition rules (implementation-defined; passed through to server).
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV export of matching JO records.
+          content:
+            text/csv:
+              schema:
+                type: string
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /publications:
     get:
       tags: [Publications]
@@ -422,6 +504,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /components:
+    get:
+      tags: [Components]
+      summary: List approved chemical components or fetch one by query parameter
+      description: >
+        If query parameter id is provided, returns the matching row from jo_components
+        together with approved JO record ids linked through jo_composition_components.
+        If id is omitted, returns all components that are linked to approved JO records.
+      parameters:
+        - name: id
+          in: query
+          description: Component id to retrieve.
+          schema:
+            type: integer
+            minimum: 1
+            example: 123
+      responses:
+        "200":
+          description: Component list or single component response.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ComponentsListResponse"
+                  - $ref: "#/components/schemas/ComponentByIdResponse"
+        "400":
+          description: Invalid component id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Component not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /components/{id}:
+    get:
+      tags: [Components]
+      summary: Retrieve a single chemical component
+      description: >
+        REST-style component lookup by id. Returns the jo_components row and approved
+        JO record ids linked through jo_composition_components.
+      parameters:
+        - $ref: "#/components/parameters/ComponentIdPath"
+      responses:
+        "200":
+          description: Component found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponentByIdResponse"
+        "400":
+          description: Invalid component id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Component not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     RecordIdPath:
@@ -429,6 +590,16 @@ components:
       in: path
       required: true
       description: JO record id.
+      schema:
+        type: integer
+        minimum: 1
+        example: 123
+
+    ComponentIdPath:
+      name: id
+      in: path
+      required: true
+      description: Component id.
       schema:
         type: integer
         minimum: 1
@@ -698,6 +869,73 @@ components:
           type: object
           nullable: true
           additionalProperties: true
+      additionalProperties: true
+
+    ComponentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        ui_name:
+          type: string
+          nullable: true
+          example: "Al2O3"
+        cid:
+          oneOf:
+            - type: integer
+            - type: string
+          nullable: true
+        pubchem_name:
+          type: string
+          nullable: true
+        date_created:
+          type: string
+          nullable: true
+        jo_record_ids:
+          type: array
+          items:
+            type: integer
+      additionalProperties: true
+
+    ComponentDetail:
+      allOf:
+        - $ref: "#/components/schemas/ComponentSummary"
+        - type: object
+          description: Full jo_components row plus approved JO record ids.
+          additionalProperties: true
+
+    ComponentsListResponse:
+      type: object
+      required: [ok, mode, count, data]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        mode:
+          type: string
+          example: all_approved
+        count:
+          type: integer
+          example: 42
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentSummary"
+      additionalProperties: true
+
+    ComponentByIdResponse:
+      type: object
+      required: [ok, mode, data]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        mode:
+          type: string
+          example: component_by_id
+        data:
+          $ref: "#/components/schemas/ComponentDetail"
       additionalProperties: true
 
     AuditTrailResponse:
