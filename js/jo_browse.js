@@ -167,7 +167,7 @@ function render(items) {
     .map((val, id) => `
       <span class="jo-db-badge"
             style="color: ${esc(foregroundColors[it.badges_states[id]] || "#888")}; background-color: ${esc(backgroundColors[it.badges_states[id]] || "#888")}; border: ${esc(it.badges_notes[id] || "")==""?  '1px solid ' + esc(backgroundColors[it.badges_states[id]] || "#888") : '1px dashed ' + esc(foregroundColors[it.badges_states[id]] || "#888")};"
-            title="${id == 6 ? esc(fmtNum(it.density)) + ' g/cm³' || "" : esc(it.badges_notes[id] || "")}">
+            title="${id == 6 && esc(fmtNum(it.density)) ? esc(fmtNum(it.density)) + ' g/cm³' || "" : esc(it.badges_notes[id] || "")}">
         ${esc(it.badges[id] || id)}
       </span>
     `)
@@ -319,7 +319,7 @@ function render(items) {
             </dd>
             <dt>Density</dt>
             <dd>
-              ${it.has_density == 2 ? esc(fmtNum(it.density)) + ' g/cm³' : it.has_density == 1 ? '<i class=\'fa fa-question\'></i>' : '<i class=\'fa fa-times\'></i>'}
+              ${it.has_density == 2 ? (esc(fmtNum(it.density)) ? esc(fmtNum(it.density)) + ' g/cm³' : '<i class=\'fa fa-check\'></i>') : (it.has_density == 1 ? '<i class=\'fa fa-question\'></i>' : '<i class=\'fa fa-times\'></i>')}
             </dd>
             <dt>Host</dt>
             <dd>
@@ -593,7 +593,7 @@ async function load(page) {
       }
     });
   }
-  const url = `api/browse_records.php?${params.toString()}`;
+  const url = `api/get_records.php?${params.toString()}`;
   const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
   const data = await res.json();
   if (seq !== loadSeq) return;

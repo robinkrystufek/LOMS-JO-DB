@@ -11,7 +11,7 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 include 'config.inc.php';
-require 'user_auth.inc.php';
+require 'auth_user.inc.php';
 include 'add_entry.inc.php';
 $UPLOAD_BASE = dirname(__DIR__) . '/uploads/loms';    // uploads/loms/<jo_record_id>/
 $MAX_UPLOAD_BYTES = 20 * 1024 * 1024;                 // 20 MB
@@ -50,7 +50,7 @@ $article_metadata = '{}';
 $alex_refs = '{}';
 $alex_citations = '{}';
 if ($doi !== null) {
-  require_once __DIR__ . '/doi_lookup.php';
+  require_once __DIR__ . '/lookup_doi.php';
   try {
     $doi = normalize_doi($doi);
     $lookup = doi_lookup_fetch($doi);
@@ -345,26 +345,43 @@ try {
   if ($hasLomsUpload) {
     $f = $_FILES['jo_recalc_file_file_format'];
     if (($f['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-      json_fail('LOMS upload error code: ' . (string)$f['error'], 400);
+      json_fail('Upload error code: ' . (string)$f['error'], 400);
     }
     if (!isset($f['tmp_name']) || !is_uploaded_file($f['tmp_name'])) {
-      json_fail('Invalid LOMS uploaded file.', 400);
+      json_fail('Invalid uploaded file.', 400);
     }
     if ((int)($f['size'] ?? 0) > $MAX_UPLOAD_BYTES) {
-      json_fail('LOMS upload too large.', 400);
+      json_fail('Upload too large.', 400);
     }
+    [$ext, $mime] = detect_allowed_upload(
+      (string)$f['tmp_name'],
+      (string)($f['name'] ?? 'upload.dat')
+    );
     $dir = rtrim($UPLOAD_BASE, '/\\') . DIRECTORY_SEPARATOR . (string)$jo_record_id;
     ensure_dir($dir);
     $original = safe_filename((string)($f['name'] ?? 'upload.dat'));
-    $targetAbs = $dir . DIRECTORY_SEPARATOR . $original;
+    $storedName = bin2hex(random_bytes(16)) . '.' . str_replace('.', '_', $ext);
+    $targetAbs = $dir . DIRECTORY_SEPARATOR . $storedName;
     if (!move_uploaded_file($f['tmp_name'], $targetAbs)) {
-      json_fail('Failed to store uploaded LOMS file.', 500);
+      json_fail('Failed to store uploaded file.', 500);
     }
-    $storedRelPath = 'uploads/loms/' . $jo_record_id . '/' . $original;
-    $noteLine = "[loms_file_path={$storedRelPath}]";
+    $sha256 = hash_file('sha256', $targetAbs);
+    if ($sha256 === false) {
+      json_fail('Failed to compute uploaded file hash.', 500);
+    }
+    $storedRelPath = 'uploads/loms/' . $jo_record_id . '/' . $storedName;
+    $noteLine = "[loms_file_path={$storedRelPath}]"
+              . "[loms_file_name={$original}]"
+              . "[loms_file_ext={$ext}]"
+              . "[loms_file_mime={$mime}]"
+              . "[loms_file_size={$f['size']}]"
+              . "[loms_file_sha256={$sha256}]";
     $newExtra = ($extra_notes === null) ? $noteLine : ($extra_notes . "\n" . $noteLine);
     $upd = $pdo->prepare("UPDATE jo_records SET extra_notes = :extra_notes WHERE id = :id");
-    $upd->execute([':extra_notes' => $newExtra, ':id' => $jo_record_id]);
+    $upd->execute([
+      ':extra_notes' => $newExtra,
+      ':id' => $jo_record_id
+    ]);
   } 
   else {
     if ($recalculated_loms_option === 2) {

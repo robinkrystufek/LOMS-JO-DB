@@ -7,8 +7,8 @@
  * without paging and outputs matching records as a CSV file.
  */
 declare(strict_types=1);
-include 'config.inc.php';
-require_once __DIR__ . '/jo_records.inc.php';
+require 'config.inc.php';
+require 'records.inc.php';
 function csv_cell($v): string {
   if ($v === null) return '';
   $s = (string)$v;
@@ -224,7 +224,7 @@ try {
       $r['recalculated_loms_option'],
       $r['recalculated_loms_note'],
       $r['components'] ?? null,
-      str_replace(["\r\n", "\r", "\n"], "\\n", (string)($r['extra_notes'] ?? '')),
+      str_replace(["\r\n", "\r", "\n"], "\\n", stripDBTags($r['extra_notes']) ?? ''),
     ];
     echo implode(',', array_map('csv_cell', $row)) . "\n";
   }

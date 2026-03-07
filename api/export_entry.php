@@ -11,7 +11,7 @@
  *   export_entry.php?id=123&type=citation&format=apa
  */
 declare(strict_types=1);
-require_once __DIR__ . '/config.inc.php';
+require 'config.inc.php';
 
 function fail(string $msg, int $http = 400): void {
   http_response_code($http);
@@ -252,7 +252,7 @@ try {
     if ($l = kv_line('mag_dipole_note', $jo['mag_dipole_note'] ?? null)) $lines[] = $l;
     if ($l = kv_line('reduced_element_note', $jo['reduced_element_note'] ?? null)) $lines[] = $l;
     if ($l = kv_line('recalculated_loms_note', $jo['recalculated_loms_note'] ?? null)) $lines[] = $l;
-    if ($l = kv_line('extra_notes', $jo['extra_notes'] ?? null)) $lines[] = $l;
+    if ($l = kv_line('extra_notes', stripDBTags($jo['extra_notes']) ?? null)) $lines[] = $l;
     if (!empty($comp)) {
       $lines[] = '';
       $lines[] = '# Normalized composition';
@@ -317,7 +317,7 @@ try {
   add_row($rows, 'jo_record', $id, null, 'mag_dipole_note', $jo['mag_dipole_note'] ?? null);
   add_row($rows, 'jo_record', $id, null, 'reduced_element_note', $jo['reduced_element_note'] ?? null);
   add_row($rows, 'jo_record', $id, null, 'recalculated_loms_note', $jo['recalculated_loms_note'] ?? null);
-  add_row($rows, 'jo_record', $id, null, 'extra_notes', $jo['extra_notes'] ?? null);
+  add_row($rows, 'jo_record', $id, null, 'extra_notes', stripDBTags($jo['extra_notes']) ?? null);
   $i = 0;
   foreach ($comp as $r) {
     $i++;

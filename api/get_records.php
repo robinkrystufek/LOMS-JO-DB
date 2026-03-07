@@ -1,6 +1,6 @@
 <?php
 /**
- * browse_records.php
+ * get_records.php
  *
  * Search/browse endpoint for JO records.
  * Applies filters (publication, composition, badges, advanced rules)
@@ -9,8 +9,8 @@
  */
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
-include 'config.inc.php';
-require_once __DIR__ . '/jo_records.inc.php';
+require 'config.inc.php';
+require 'records.inc.php';
 
 function respond(int $code, array $payload): void {
   http_response_code($code);
@@ -300,9 +300,6 @@ try {
     if (!empty($r['pub_doi'])) $pubLine .= ", DOI <a href='https://doi.org/" . $r['pub_doi']. "' target='_blank'>" . $r['pub_doi'] . "</a>";
     $pubLine = trim($pubLine, " ,");
     $omegaUnit = $r['omega_unit'] ?: '10⁻²⁰ cm²';
-    $extras = [];
-    if (!empty($r['has_density']) && $r['density_g_cm3'] !== null) $extras[] = "ρ = {$r['density_g_cm3']} g/cm³";
-    if (!empty($r['extra_notes'])) $extras[] = trim((string)$r['extra_notes']);
     $rid = (int)$r['jo_record_id'];
 
     return [
@@ -328,7 +325,7 @@ try {
       'has_density' => $r['has_density'],
       'density' => $r['density_g_cm3'],
       'sample_label' => $r['sample_label'] ?? '',
-      'notes' => stripFilePathTag($r['extra_notes']) ?? '',
+      'notes' => stripDBTags($r['extra_notes']) ?? '',
       'doi' => $r['pub_doi'] ?? '',
       'pub_title' => $r['pub_title'] ?? '',
       'pub_authors' => $r['pub_authors'] ?? '',
@@ -349,7 +346,6 @@ try {
           'omega6' => $r['omega6'],
           'unit' => $omegaUnit,
         ],
-        'extras' => implode('; ', array_filter($extras)),
         'loms_file_url' => $lomsUrl,
       ],
     ];
