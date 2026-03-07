@@ -11,24 +11,20 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 require 'config.inc.php';
 require 'records.inc.php';
-
 function respond(int $code, array $payload): void {
   http_response_code($code);
   echo json_encode($payload, JSON_UNESCAPED_UNICODE);
   exit;
 }
-function unicode_superscript($n) {
-  $map = ['0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴','5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'];
-  return strtr((string)$n, $map);
-}
 function format_value($val) {
   if (!is_numeric($val)) return $val;
+  $map_to_superscript = ['0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴','5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'];
   $val = (float)$val;
   if (abs($val) >= 1000) {
     $exp = floor(log10(abs($val)));
     $mant = $val / (10 ** $exp);
     $mantStr = rtrim(rtrim(number_format($mant, 3, '.', ''), '0'), '.');
-    return $mantStr . ' × 10' . unicode_superscript($exp);
+    return $mantStr . ' × 10' . strtr((string)$exp, $map_to_superscript);
   }
   $v = (string)$val;
   if (str_contains($v, '.')) $v = rtrim(rtrim($v, '0'), '.');
@@ -42,7 +38,7 @@ $offset = ($page - 1) * $perPage;
 $sortByReq  = trim((string)($_GET['sort_by'] ?? 'id'));
 $sortDirReq = strtolower(trim((string)($_GET['sort_dir'] ?? 'desc')));
 $sortMap = [
-  'id'            => 'r.id',
+  'id'             => 'r.id',
   're_ion'         => 'r.re_ion',
   'concentration'  => 'r.re_conc_value',
   'composition'    => 'r.composition_text',
@@ -55,10 +51,6 @@ $sortMap = [
 $orderExpr = $sortMap[$sortByReq] ?? 'r.id';
 $orderDir  = ($sortDirReq === 'asc') ? 'ASC' : 'DESC';
 
-$reIon        = trim((string)($_GET['re_ion'] ?? ''));
-$hostType     = trim((string)($_GET['host_type'] ?? ''));
-$compositionQ = trim((string)($_GET['composition_q'] ?? ''));
-$elementQ     = trim((string)($_GET['element_q'] ?? ''));
 try {
   $pdo = new PDO(
     "mysql:host={$DB_HOST};dbname={$DB_NAME};charset={$DB_CHARSET}",
@@ -72,45 +64,9 @@ try {
   );
   $where = [];
   $params = [];
-  if ($reIon !== '') { 
-    $where[] = "r.re_ion LIKE '%".$reIon."%'"; 
-  }
-  if ($hostType !== '') { $where[] = "r.host_type = :host_type"; $params[':host_type'] = $hostType; }
-  if ($compositionQ !== '') {
-    $where[] = "(
-      r.re_ion LIKE :composition_q_re_ion OR 
-      r.sample_label LIKE :composition_q_label OR 
-      r.composition_text LIKE :composition_q_text OR 
-      EXISTS (
-        SELECT 1 FROM jo_composition_components cc
-        WHERE cc.jo_record_id = r.id
-          AND cc.component LIKE :composition_q_component
-      ))";
-    $params[':composition_q_re_ion'] = '%' . $compositionQ . '%';
-    $params[':composition_q_label'] = '%' . $compositionQ . '%';
-    $params[':composition_q_text'] = '%' . $compositionQ . '%';
-    $params[':composition_q_component'] = '%' . $compositionQ . '%';
-  }
-  if ($elementQ !== '') {
-    $elementQ = ucfirst(strtolower(trim($elementQ)));
-    if (preg_match('/^[A-Z][a-z]?$/', $elementQ)) {
-      $where[] = "(
-        REGEXP_LIKE(r.re_ion, :composition_regex, 'c')
-        OR EXISTS (
-          SELECT 1 FROM jo_composition_components cc
-          WHERE cc.jo_record_id = r.id
-            AND REGEXP_LIKE(cc.component, :component_regex, 'c')
-        ))";
-      $params[':composition_regex'] = $elementQ . '(?![a-z])';
-      $params[':component_regex']   = $elementQ . '(?![a-z])';
-    }
-  }
-  jo_apply_badge_filters($_GET, $where, $params);
-  jo_apply_publication_filters($_GET, $where);
-  jo_apply_advanced_composition_rules($_GET, $where, $params);
-  jo_apply_id_filter($_GET, $where, $params);
-
+  apply_filters($_GET, $where, $params);
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
   $stCount = $pdo->prepare("
     SELECT COUNT(*) AS c
     FROM jo_records r
@@ -137,16 +93,10 @@ try {
       r.re_conc_unit,
       r.host_type,
       r.composition_text,
-      r.temperature_k,
-      r.lambda_min_nm,
-      r.lambda_max_nm,
-      r.method,
       r.omega2, r.omega4, r.omega6,
       r.omega2_error,
       r.omega4_error,
       r.omega6_error,
-      r.omega_unit,
-      r.jo_original_paper,
       r.jo_recalc_by_loms,
       r.sample_label,
       r.refractive_index_option,
@@ -161,21 +111,8 @@ try {
       r.mag_dipole_note,
       r.reduced_element_note,
       r.recalculated_loms_note,
-      r.has_absorption_spec,
-      r.has_emission_spec,
-      r.has_n_spectrum,
-      r.has_n_parameters,
       r.has_density,
-      r.has_lifetime,
-      r.has_branching_ratios,
-      r.has_transmission_spec,
       r.density_g_cm3,
-      r.n_546nm,
-      r.n_633nm,
-      r.dispersion_model,
-      r.dispersion_a,
-      r.dispersion_b,
-      r.dispersion_c,
       r.extra_notes,
       r.review_status,
       p.doi AS pub_doi,
@@ -238,28 +175,15 @@ try {
       ];
     }
     foreach ($componentsByRecord as $rid => &$components) {
-      $elementalCompositionByRecord[$rid] = normalizeComposition($components);
+      $elementalCompositionByRecord[$rid] = normalize_composition($components);
     }
     unset($components);
   }
 
-  $hostTypeLabel = [
-    'glass' => 'Glass (G)',
-    'single_crystal' => 'Single-crystalline (SC)',
-    'polycrystal' => 'Polycrystalline (PC)',
-    'glass_ceramic' => 'Glass-ceramic (GC)',
-    'vapor' => 'Vapor (V)',
-    'solution' => 'Solution (S)',
-    'melt' => 'Melt (M)',
-    'powder' => 'Powder (P)',
-    'aqua' => 'Aqueous (A)',
-    'other' => 'Other',
-  ];
-
-  $items = array_map(function(array $r) use ($hostTypeLabel, $componentsByRecord, $elementalCompositionByRecord) {
+  $items = array_map(function(array $r) use ($componentsByRecord, $elementalCompositionByRecord) {
     $host_type = $r['host_type'] ?? 'other';
     $hostDetails = trim(
-      ucfirst($hostTypeLabel[$host_type] ?? $host_type)
+      ucfirst(host_type_label($host_type) ?? $host_type)
     );
     $conc = '';
     if ($r['re_conc_value'] !== null && $r['re_conc_value'] !== '') {
@@ -269,7 +193,7 @@ try {
         $vu = format_value($r['re_conc_value_upper']);
         $range .= '–' . $vu;
       }
-      $conc = trim($range . ' ' . str_replace("ions/cm3","ions/cm³",$r['re_conc_unit'] ?? ''));
+      $conc = trim($range . ' ' . conc_unit_label($r['re_conc_unit']));
     }
 
     $badges = ["n","C-JO","σFS","MD","RME","LOMS","ρ"];
@@ -291,23 +215,14 @@ try {
     if (isset($r['has_density'])) $badges_states[6] = $r['has_density'];
     if (!empty($r['density_g_cm3'])) $badges_notes[6] = $r['density_g_cm3']. " g/cm³";
 
-    $lomsPath = extractFilePath((string)($r['extra_notes'] ?? ''));
+    $lomsPath = extract_file_path((string)($r['extra_notes'] ?? ''));
     $lomsUrl = ($lomsPath && $r['recalculated_loms_option']==2) ? ("https://www.loms.cz/jo-db/" . $lomsPath) : null;
-
-    $pubLine = '';
-    if (!empty($r['pub_journal'])) $pubLine = $r['pub_journal'];
-    if (!empty($r['pub_year'])) $pubLine .= " ({$r['pub_year']})";
-    if (!empty($r['pub_doi'])) $pubLine .= ", DOI <a href='https://doi.org/" . $r['pub_doi']. "' target='_blank'>" . $r['pub_doi'] . "</a>";
-    $pubLine = trim($pubLine, " ,");
-    $omegaUnit = $r['omega_unit'] ?: '10⁻²⁰ cm²';
     $rid = (int)$r['jo_record_id'];
 
     return [
       'jo_record_id' => $rid,
       'publication_id' => (int)$r['publication_id'],
       're_ion' => $r['re_ion'],
-      'host_short' => $hostDetails,
-      'composition_short' => $r['composition_text'],
       'omega2' => $r['omega2'],
       'omega4' => $r['omega4'],
       'omega6' => $r['omega6'],
@@ -319,13 +234,15 @@ try {
       'concentration_upper' => $r['re_conc_value_upper'] ?? '',
       'concentration_unit' => $r['re_conc_unit'] ?? '',
       'concentration_note' => $r['re_conc_value_note'] ?? '',
+      'host' => $hostDetails,
+      'composition' => $r['composition_text'],
       'badges' => $badges,
       'badges_notes' => $badges_notes,
       'badges_states' => $badges_states,
       'has_density' => $r['has_density'],
       'density' => $r['density_g_cm3'],
       'sample_label' => $r['sample_label'] ?? '',
-      'notes' => stripDBTags($r['extra_notes']) ?? '',
+      'notes' => strip_db_tags($r['extra_notes']) ?? '',
       'doi' => $r['pub_doi'] ?? '',
       'pub_title' => $r['pub_title'] ?? '',
       'pub_authors' => $r['pub_authors'] ?? '',
@@ -334,18 +251,9 @@ try {
       'pub_url' => $r['pub_url'] ?? '',
       'review_status' => $r['review_status'] ?? '',
       'details' => [
-        'publication' => $pubLine,
         'contributor' => $r['contributor_info'] ?? '',
-        'host' => $hostDetails,
-        'composition' => $r['composition_text'],
         'composition_components' => $componentsByRecord[$rid] ?? [],
         'elemental_composition' => $elementalCompositionByRecord[$rid] ?? [],
-        'jo_parameters' => [
-          'omega2' => $r['omega2'],
-          'omega4' => $r['omega4'],
-          'omega6' => $r['omega6'],
-          'unit' => $omegaUnit,
-        ],
         'loms_file_url' => $lomsUrl,
       ],
     ];
