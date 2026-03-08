@@ -256,9 +256,16 @@ function render(items) {
     const pElementsAt = columnPrecision(elements, c => Number(c.c_at), 3);
     const pElementsWt = columnPrecision(elements, c => Number(c.c_wt), 3);
     const elementRows = elements.map(c => {
-      const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt, 1));
-      const cAt      = fmtFixed(Number(c.c_at),  Math.max (pElementsAt, 1));
-      const cRE      = fmtFixed(Number(c.re_c),  Math.max (pElementsAt, 1));
+      if(!c.c_wt && !c.c_at && !c.re_c) return '';
+      const cWt         = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt, 1));
+      const cAt         = fmtFixed(Number(c.c_at),  Math.max (pElementsAt, 1));
+      const cRE         = fmtFixed(Number(c.re_c),  Math.max (pElementsAt, 1));
+      const cWtDisplay  = cWt == "n/a" ? (c.re_c && c.re_c_unit == "wt%"  ? cRE + " wt%"  : "n/a") : cWt + " wt%";
+      const cAtDisplay  = cAt == "n/a" ? (c.re_c && c.re_c_unit == "at%"  ? cRE + " at%"  : "n/a") : cAt + " at%";
+      const cMolDisplay = cAt == "n/a" ? (c.re_c && c.re_c_unit == "mol%" ? cRE + " mol%" : "n/a") : cAt + " mol%";
+      const cWtFilter   = cWtDisplay == "n/a"  ? "n/a" : `<button class="comp-filter-btn" style="color:var(--text-muted);" data-component="${esc(c.component)}" data-concentration="${cWtDisplay.split(' ')[0] ?? null}" data-unit="${cWtDisplay.split(' ')[1] ?? null}" title="Search for entries containing ${esc(c.component)} at ${cWtDisplay}">${cWtDisplay} <i class="fa fa-filter"></i></button>`;
+      const cAtFilter   = cAtDisplay == "n/a"  ? "n/a" : `<button class="comp-filter-btn" style="color:var(--text-muted);" data-component="${esc(c.component)}" data-concentration="${cAtDisplay.split(' ')[0] ?? null}" data-unit="${cAtDisplay.split(' ')[1] ?? null}" title="Search for entries containing ${esc(c.component)} at ${cAtDisplay}">${cAtDisplay} <i class="fa fa-filter"></i></button>`;
+      const cMolFilter  = cMolDisplay == "n/a" ? "n/a" : `<button class="comp-filter-btn" style="color:var(--text-muted);" data-component="${esc(c.component)}" data-concentration="${cMolDisplay.split(' ')[0] ?? null}" data-unit="${cMolDisplay.split(' ')[1] ?? null}" title="Search for entries containing ${esc(c.component)} at ${cMolDisplay}">${cMolDisplay} <i class="fa fa-filter"></i></button>`;
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -267,14 +274,14 @@ function render(items) {
               <i class="fa fa-filter"></i>
             </button>
           </td>
-          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cAt == "n/a" ? (c.re_c && c.re_c_unit == "mol%" ? cRE + " mol%" : "n/a") : cAt + " mol%"}
+          <td style="text-align:right; overflow: inherit; color:var(--text-muted);${cMolDisplay == "n/a" ? " padding-right: 2.6em;" : ""}">
+            ${cMolFilter}
           </td>
-          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cWt == "n/a" ? (c.re_c && c.re_c_unit == "wt%" ? cRE + " wt%" : "n/a") : cWt + " wt%"}
+          <td style="text-align:right; overflow: inherit; color:var(--text-muted);${cWtDisplay == "n/a" ? " padding-right: 2.6em;" : ""}">
+            ${cWtFilter}
           </td>
-          <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cAt == "n/a" ? (c.re_c && c.re_c_unit == "at%" ? cRE + " at%" : "n/a") : cAt + " at%"}
+          <td style="text-align:right; overflow: inherit; color:var(--text-muted);${cAtDisplay == "n/a" ? " padding-right: 2.6em;" : ""}">
+            ${cAtFilter}
           </td>
         </tr>
       `;
@@ -660,10 +667,11 @@ function findEntriesByComponent(component) {
     load(1);
   }, 500);
 }
-function addComponentToMultiFilter(component, reload = false, concentration = '', unit = '') {
+function addComponentToMultiFilter(component, reload = false, concentration = '', unit = '', tolerance = 0.1) {
   if(concentration && unit) {
     window.__JO_ADV_RULES__?.clearBackground();
-    window.__JO_ADV_RULES__?.addRule(component, unit, concentration, '=', true);
+    window.__JO_ADV_RULES__?.addRule(component, unit, Math.min(Number(concentration) + tolerance, 100).toPrecision(5), '<=', false);
+    window.__JO_ADV_RULES__?.addRule(component, unit, Math.max(Number(concentration) - tolerance, 0).toPrecision(5), '>=', true);
   }
   else {
     if(reload) window.__JO_ADV_RULES__?.clearBackground();

@@ -84,7 +84,7 @@ try {
         WHERE cc.jo_record_id = r.id
       ) AS components
     FROM jo_records r
-    JOIN publications p ON p.id = r.publication_id
+    JOIN jo_publications p ON p.id = r.publication_id
     $whereSql
     ORDER BY r.id DESC
   ";

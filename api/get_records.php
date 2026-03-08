@@ -70,7 +70,7 @@ try {
   $stCount = $pdo->prepare("
     SELECT COUNT(*) AS c
     FROM jo_records r
-    JOIN publications p ON p.id = r.publication_id
+    JOIN jo_publications p ON p.id = r.publication_id
     $whereSql
   ");
   $stCount->execute($params);
@@ -122,7 +122,7 @@ try {
       p.year AS pub_year,
       p.url AS pub_url
     FROM jo_records r
-    JOIN publications p ON p.id = r.publication_id
+    JOIN jo_publications p ON p.id = r.publication_id
     $whereSql
     ORDER BY $orderExpr $orderDir, r.id DESC
     LIMIT :lim OFFSET :off

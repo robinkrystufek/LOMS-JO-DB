@@ -39,7 +39,7 @@ try {
   );
   // DOI provided -> publication details
   if ($doi !== '') {
-    $st = $pdo->prepare("SELECT * FROM publications WHERE doi = :doi ORDER BY id DESC LIMIT 1");
+    $st = $pdo->prepare("SELECT * FROM jo_publications WHERE doi = :doi ORDER BY id DESC LIMIT 1");
     $st->execute([':doi' => $doi]);
     $row = $st->fetch();
     if (!$row) {
@@ -52,7 +52,7 @@ try {
     $st2 = $pdo->prepare("
       SELECT r.id
       FROM jo_records r
-      JOIN publications p ON p.id = r.publication_id
+      JOIN jo_publications p ON p.id = r.publication_id
       WHERE p.doi = :doi AND r.review_status = 'approved'
       ORDER BY r.id ASC
     ");
@@ -82,7 +82,7 @@ try {
         p.doi,
         p.created_at,
         p.updated_at
-      FROM publications p
+      FROM jo_publications p
       WHERE p.doi IS NOT NULL AND p.doi <> ''
         AND EXISTS (
           SELECT 1

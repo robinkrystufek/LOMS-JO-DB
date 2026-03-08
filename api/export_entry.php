@@ -120,7 +120,7 @@ try {
   $pub = null;
   $pub_id = (int)($jo['publication_id'] ?? 0);
   if ($pub_id > 0) {
-    $stp = $pdo->prepare('SELECT * FROM publications WHERE id = :id LIMIT 1');
+    $stp = $pdo->prepare('SELECT * FROM jo_publications WHERE id = :id LIMIT 1');
     $stp->execute([':id' => $pub_id]);
     $pub = $stp->fetch() ?: null;
   }

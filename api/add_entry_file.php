@@ -165,13 +165,13 @@ try {
   }
   $publication_id = null;
   if ($doi !== null) {
-    $stmt = $pdo->prepare("SELECT id FROM publications WHERE doi = :doi LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id FROM jo_publications WHERE doi = :doi LIMIT 1");
     $stmt->execute([':doi' => $doi]);
     $row = $stmt->fetch();
     if ($row && isset($row['id'])) {
       $publication_id = (int)$row['id'];
       $upd = $pdo->prepare("
-        UPDATE publications
+        UPDATE jo_publications
         SET alex_id = :alex_id,
             title = :title,
             journal = :journal,
@@ -199,7 +199,7 @@ try {
   }
   if ($publication_id === null) {
     $ins = $pdo->prepare("
-      INSERT INTO publications (doi, alex_id, title, journal, year, url, authors, metadata, alex_refs, alex_citations)
+      INSERT INTO jo_publications (doi, alex_id, title, journal, year, url, authors, metadata, alex_refs, alex_citations)
       VALUES (:doi, :alex_id, :title, :journal, :year, :url, :authors, :metadata, :alex_refs, :alex_citations)
     ");
     $ins->execute([

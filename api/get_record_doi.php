@@ -53,7 +53,7 @@ try {
       p.id AS publication_id,
       p.doi,
       COUNT(r.id) AS jo_count
-    FROM publications p
+    FROM jo_publications p
     LEFT JOIN jo_records r ON r.publication_id = p.id
     WHERE LOWER(p.doi) IN ($ph) AND r.review_status = 'approved'
     GROUP BY p.id, p.doi
