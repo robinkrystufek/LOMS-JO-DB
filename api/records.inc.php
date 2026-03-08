@@ -143,10 +143,16 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
     $pV3  = ":rv3{$i}";
     $pV4  = ":rv4{$i}";
     $pV5  = ":rv5{$i}";
+    $pV6 = ":rv6_{$i}";
+    $pRE2 = ":rre2_{$i}";
+    $pRE1 = ":rre1_{$i}";
+    $pREU = ":rreu_{$i}";
+    $params[$pRE1] = $c;
     $params[$pCC1] = $c;
     $params[$pCE1] = $c;
     $params[$pV1]  = $vNum;
     $params[$pV2]  = $vNum;
+    $params[$pV6]  = $vNum;
     $existsCompSql = '';
     $matchCompSql  = '';
     $existsElemSql = '';
@@ -179,6 +185,15 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
           AND ce.c_mol IS NOT NULL
           AND ce.c_mol {$allowedOps[$o]} $pV1
       ";
+      $existsRESql = "
+        r.re_ion <> $pRE2
+      ";
+      $matchRESql = "
+        r.re_ion = $pRE1
+        AND r.re_conc_value {$allowedOps[$o]} $pV6
+        AND r.re_conc_unit = $pREU
+      ";      
+      $params[$pREU]  = "mol%";
     } 
     elseif ($u === 'wt%') {
       $existsCompSql = "
@@ -207,6 +222,15 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
           AND ce.c_wt IS NOT NULL
           AND ce.c_wt {$allowedOps[$o]} $pV1
       ";
+      $existsRESql = "
+        r.re_ion <> $pRE2
+      ";
+      $matchRESql = "
+        r.re_ion = $pRE1
+        AND r.re_conc_value {$allowedOps[$o]} $pV6
+        AND r.re_conc_unit = $pREU
+      ";      
+      $params[$pREU]  = "wt%";
     } 
     elseif ($u === 'at%') {
       $existsCompSql = "
@@ -235,6 +259,15 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
           AND ce.c_mol IS NOT NULL
           AND ce.c_mol {$allowedOps[$o]} $pV1
       ";
+      $existsRESql = "
+        r.re_ion <> $pRE2
+      ";
+      $matchRESql = "
+        r.re_ion = $pRE1
+        AND r.re_conc_value {$allowedOps[$o]} $pV6
+        AND r.re_conc_unit = $pREU
+      ";      
+      $params[$pREU]  = "at%";
     } 
     elseif ($u === 'any%') {
       $params[$pV3] = $vNum;
@@ -278,6 +311,13 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
             OR (ce.c_wt  IS NOT NULL AND ce.c_wt  {$allowedOps[$o]} $pV5)
           )
       ";
+      $existsRESql = "
+        r.re_ion <> $pRE2
+      ";
+      $matchRESql = "
+        r.re_ion = $pRE1
+        AND r.re_conc_value {$allowedOps[$o]} $pV6
+      ";      
     } 
     else {
       continue;
@@ -291,6 +331,9 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
           AND NOT EXISTS (
             $existsElemSql
           )
+          AND (
+            $existsRESql
+          )
         )
         OR EXISTS (
           $matchCompSql
@@ -298,16 +341,25 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
         OR EXISTS (
           $matchElemSql
         )
+        OR (
+          $matchRESql
+        )
       )";
+      $params[$pCE2] = $c;
       $params[$pCC2] = $c;
       $params[$pCE2] = $c;
-    } else {
+      $params[$pRE2] = $c;
+    } 
+    else {
       $where[] = "(
         EXISTS (
           $matchCompSql
         )
         OR EXISTS (
           $matchElemSql
+        )
+        OR (
+          $matchRESql
         )
       )";
     }
