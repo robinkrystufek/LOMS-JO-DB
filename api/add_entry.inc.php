@@ -223,48 +223,6 @@ function curl_multi_json(array $urls, int $concurrency = 6, int $timeoutMs = 150
   curl_multi_close($mh);
   return $out;
 }
-function fetchComponentDetails($compRows, ?PDO $pdo = null) {
-  $baseUrl = 'https://www.loms.cz/jo-db/api/lookup_pubchem.php?q=';
-  $uniq = [];
-  foreach ($compRows as $row) {
-    $q = (string)($row['component'] ?? '');
-    if ($q !== '') $uniq[$q] = true;
-  }
-  $names = array_keys($uniq);
-  $local = [];
-  if ($pdo instanceof PDO && count($names)) {
-    $ph = implode(',', array_fill(0, count($names), '?'));
-    $st = $pdo->prepare("SELECT id, ui_name FROM jo_components WHERE ui_name IN ($ph)");
-    $st->execute($names);
-    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
-      $local[(string)$r['ui_name']] = (int)$r['id'];
-    }
-  }
-  $componentLinks = [];
-  foreach ($names as $name) {
-    if (isset($local[$name])) continue;
-    $componentLinks[$name] = $baseUrl . rawurlencode($name);
-  }
-  $out = [];
-  if (count($componentLinks)) {
-    $out = curl_multi_json(array_values($componentLinks), concurrency: 6, timeoutMs: 15000, connectTimeoutMs: 1600);
-  }
-  for ($i = 0; $i < count($compRows); $i++) {
-    $q = (string)($compRows[$i]['component'] ?? '');
-    if ($q !== '' && isset($local[$q])) {
-      $compRows[$i]['id'] = (int)$local[$q];
-      continue;
-    }
-    $url = ($q !== '') ? ($componentLinks[$q] ?? null) : null;
-    $r = ($url !== null) ? ($out[$url] ?? null) : null;
-    if (is_array($r) && isset($r['json']['component_id'])) {
-      $compRows[$i]['id'] = (int)$r['json']['component_id'];
-    } else {
-      $compRows[$i]['id'] = null;
-    }
-  }
-  return $compRows;
-}
 function detect_allowed_upload(string $tmpPath, string $originalName): array {
   $name = strtolower($originalName);
   $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
@@ -380,4 +338,456 @@ function is_ignorable_archive_entry(string $path): bool {
   if ($base === 'desktop.ini') return true;
   if (str_starts_with($normalized, '__MACOSX/')) return true;
   return false;
+}
+function update_composition(array $compRows, PDO $pdo, int $jo_record_id, ?string $re_ion, ?float $re_conc_value, ?string $re_conc_unit): void {
+  $compRows = fetch_component_details($compRows, $pdo);
+  $elementRows = [];
+  if (!empty($compRows)) {
+    $elementRows = calculate_composition_storage_payload($compRows);
+  }
+  if (!empty($compRows)) {
+    $insComp = $pdo->prepare("
+      INSERT INTO jo_composition_components
+        (jo_record_id, component, value, unit, calc_mol, calc_wt, calc_at, component_id)
+      VALUES
+        (:jo_record_id, :component, :value, :unit, :calc_mol, :calc_wt, :calc_at, :component_id)
+    ");
+    foreach ($compRows as $r) {
+      $insComp->execute([
+        ':jo_record_id' => $jo_record_id,
+        ':component'    => $r['component'],
+        ':value'        => $r['value'],
+        ':unit'         => $r['unit'],
+        ':calc_mol'     => $r['calc_mol'] ?? null,
+        ':calc_wt'      => $r['calc_wt'] ?? null,
+        ':calc_at'      => $r['calc_at'] ?? null,
+        ':component_id' => $r['id'] ?? null,
+      ]);
+    }
+  }
+  if (!empty($elementRows)) {
+    $insElem = $pdo->prepare("
+      INSERT INTO jo_composition_elements
+        (element, c_mol, c_wt, re_c, re_c_unit, record_id)
+      VALUES
+        (:element, :c_mol, :c_wt, :re_c, :re_c_unit, :record_id)
+    ");
+    foreach ($elementRows as $el => $row) {
+      $insElem->execute([
+        ':element'   => $el,
+        ':c_mol'     => $row['c_mol'] ?? null,
+        ':c_wt'      => $row['c_wt'] ?? null,
+        ':re_c'      => $el == $re_ion ? $re_conc_value : null,
+        ':re_c_unit' => $el == $re_ion ? (in_array($re_conc_unit, ['mol%','wt%','at%'], true) ? $re_conc_unit : null) : null,
+        ':record_id' => $jo_record_id,
+      ]);
+    }
+  }
+  if(!isset($elementRows[$re_ion])) {
+    $insElem = $pdo->prepare("
+      INSERT INTO jo_composition_elements
+        (element, c_mol, c_wt, re_c, re_c_unit, record_id)
+      VALUES
+        (:element, :c_mol, :c_wt, :re_c, :re_c_unit, :record_id)
+    ");
+    $insElem->execute([
+      ':element'   => substr($re_ion, 0, 10),
+      ':c_mol'     => null,
+      ':c_wt'      => null,
+      ':re_c'      => $re_conc_value,
+      ':re_c_unit' => in_array($re_conc_unit, ['mol%','wt%','at%'], true) ? $re_conc_unit : null,
+      ':record_id' => $jo_record_id,
+    ]);
+  }
+}
+function fetch_component_details($compRows, ?PDO $pdo = null) {
+  $baseUrl = 'https://www.loms.cz/jo-db/api/lookup_pubchem.php?q=';
+  $uniq = [];
+  foreach ($compRows as $row) {
+    $q = (string)($row['component'] ?? '');
+    if ($q !== '') $uniq[$q] = true;
+  }
+  $names = array_keys($uniq);
+  $local = [];
+  if ($pdo instanceof PDO && count($names)) {
+    $ph = implode(',', array_fill(0, count($names), '?'));
+    $st = $pdo->prepare("
+      SELECT id, ui_name, mw, atom_number, composition
+      FROM jo_components
+      WHERE ui_name IN ($ph)
+    ");
+    $st->execute($names);
+    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+      $local[(string)$r['ui_name']] = $r;
+    }
+  }
+  $componentLinks = [];
+  foreach ($names as $name) {
+    if (isset($local[$name])) continue;
+    $componentLinks[$name] = $baseUrl . rawurlencode($name);
+  }
+  $out = [];
+  if (count($componentLinks)) {
+    $out = curl_multi_json(array_values($componentLinks), concurrency: 6, timeoutMs: 15000, connectTimeoutMs: 1600);
+  }
+  for ($i = 0; $i < count($compRows); $i++) {
+    $q = (string)($compRows[$i]['component'] ?? '');
+    $compRows[$i]['id'] = null;
+    $compRows[$i]['mw'] = null;
+    $compRows[$i]['atom_number'] = null;
+    $compRows[$i]['composition'] = null;
+    if ($q !== '' && isset($local[$q])) {
+      $compRows[$i]['id'] = (int)$local[$q]['id'];
+      $compRows[$i]['mw'] = to_float($local[$q]['mw']);
+      $compRows[$i]['atom_number'] = to_float($local[$q]['atom_number']);
+      $compRows[$i]['composition'] = $local[$q]['composition'];
+      continue;
+    }
+    $url = ($q !== '') ? ($componentLinks[$q] ?? null) : null;
+    $r = ($url !== null) ? ($out[$url] ?? null) : null;
+    if (is_array($r) && isset($r['json']['component_id'])) {
+      $compRows[$i]['id'] = (int)$r['json']['component_id'];
+      if ($pdo instanceof PDO) {
+        $st = $pdo->prepare("
+          SELECT id, mw, atom_number, composition
+          FROM jo_components
+          WHERE id = ?
+          LIMIT 1
+        ");
+        $st->execute([$compRows[$i]['id']]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+          $compRows[$i]['mw'] = to_float($row['mw']);
+          $compRows[$i]['atom_number'] = to_float($row['atom_number']);
+          $compRows[$i]['composition'] = $row['composition'];
+        }
+      }
+    }
+  }
+  return $compRows;
+}
+function parse_component_composition($composition): ?array {
+  if (!$composition) return null;
+  if (is_string($composition)) {
+    $composition = json_decode($composition, true);
+  }
+  if (!is_array($composition) || !$composition) return null;
+  $out = [];
+  foreach ($composition as $el => $cnt) {
+    $el = trim((string)$el);
+    if ($el === '') continue;
+    $v = (float)$cnt;
+    if ($v <= 0) continue;
+    $out[$el] = ($out[$el] ?? 0.0) + $v;
+  }
+  return $out ?: null;
+}
+function atom_count_from_component_composition($composition, float $fallbackAtomNumber = 0.0): float {
+  $comp = parse_component_composition($composition);
+  if (!$comp) return $fallbackAtomNumber;
+  $sum = 0.0;
+  foreach ($comp as $cnt) $sum += (float)$cnt;
+  return $sum > 0 ? $sum : $fallbackAtomNumber;
+}
+function atomic_weights_for_elements(): array {
+  return [
+    'H'=>1.00794,  'He'=>4.002602,
+    'Li'=>6.941,   'Be'=>9.012182, 'B'=>10.811,  'C'=>12.0107, 'N'=>14.0067, 'O'=>15.9994, 'F'=>18.9984032, 'Ne'=>20.1797,
+    'Na'=>22.98976928,'Mg'=>24.3050,'Al'=>26.9815386,'Si'=>28.0855,'P'=>30.973762,'S'=>32.065,'Cl'=>35.453,'Ar'=>39.948,
+    'K'=>39.0983,'Ca'=>40.078,'Sc'=>44.955912,'Ti'=>47.867,'V'=>50.9415,'Cr'=>51.9961,'Mn'=>54.938045,'Fe'=>55.845,'Co'=>58.933195,'Ni'=>58.6934,'Cu'=>63.546,'Zn'=>65.38,'Ga'=>69.723,'Ge'=>72.63,'As'=>74.92160,'Se'=>78.96,'Br'=>79.904,'Kr'=>83.798,
+    'Rb'=>85.4678,'Sr'=>87.62,'Y'=>88.90585,'Zr'=>91.224,'Nb'=>92.90638,'Mo'=>95.96,'Tc'=>98.0,'Ru'=>101.07,'Rh'=>102.90550,'Pd'=>106.42,'Ag'=>107.8682,'Cd'=>112.411,'In'=>114.818,'Sn'=>118.710,'Sb'=>121.760,'Te'=>127.60,'I'=>126.90447,'Xe'=>131.293,
+    'Cs'=>132.9054519,'Ba'=>137.327,'La'=>138.90547,'Ce'=>140.116,'Pr'=>140.90765,'Nd'=>144.242,'Pm'=>145.0,'Sm'=>150.36,'Eu'=>151.964,'Gd'=>157.25,'Tb'=>158.92535,'Dy'=>162.500,'Ho'=>164.93032,'Er'=>167.259,'Tm'=>168.93421,'Yb'=>173.054,'Lu'=>174.9668,
+    'Hf'=>178.49,'Ta'=>180.94788,'W'=>183.84,'Re'=>186.207,'Os'=>190.23,'Ir'=>192.217,'Pt'=>195.084,'Au'=>196.966569,'Hg'=>200.59,'Tl'=>204.3833,'Pb'=>207.2,'Bi'=>208.98040,'Po'=>209.0,'At'=>210.0,'Rn'=>222.0,
+    'Fr'=>223.0,'Ra'=>226.0,'Ac'=>227.0,'Th'=>232.03806,'Pa'=>231.03588,'U'=>238.02891,
+  ];
+}
+function calculate_composition_storage_payload(array &$components): array {
+  if (!$components) return [];
+  $EPS = 1e-12;
+  $moles = [];
+  $totalMoles = 0.0;
+  foreach ($components as $i => $c) {
+    $val  = (float)($c['value'] ?? 0);
+    $unit = strtolower(trim((string)($c['unit'] ?? '')));
+    $mw   = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atom_count_from_component_composition($c['composition'] ?? null, $fallbackAtoms);
+    if ($val <= 0) {
+      $moles[$i] = 0.0;
+      continue;
+    }
+    if ($unit === 'mol%') {
+      $n = $val;
+    } 
+    elseif ($unit === 'wt%') {
+      $n = ($mw > $EPS) ? ($val / $mw) : 0.0;
+    } 
+    elseif ($unit === 'at%') {
+      $n = ($atoms > $EPS) ? ($val / $atoms) : 0.0;
+    } 
+    else {
+      $n = 0.0;
+    }
+    $moles[$i] = $n;
+    $totalMoles += $n;
+  }
+  if ($totalMoles <= $EPS) return [];
+  $totalMass = 0.0;
+  $totalAtomCount = 0.0;
+  foreach ($components as $i => $c) {
+    $n = $moles[$i];
+    if ($n <= 0) continue;
+    $mw = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atom_count_from_component_composition($c['composition'] ?? null, $fallbackAtoms);
+    $totalMass += $n * $mw;
+    $totalAtomCount += $n * $atoms;
+  }
+  if ($totalMass <= $EPS) $totalMass = 1.0;
+  if ($totalAtomCount <= $EPS) $totalAtomCount = 1.0;
+  foreach ($components as $i => &$c) {
+    $n = $moles[$i];
+    $mw = (float)($c['mw'] ?? 0);
+    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
+    $atoms = atom_count_from_component_composition($c['composition'] ?? null, $fallbackAtoms);
+
+    $c['calc_mol'] = round(($n / $totalMoles) * 100.0, 10);
+    $mass = $n * $mw;
+    $c['calc_wt'] = round(($mass / $totalMass) * 100.0, 10);
+    $atomCnt = $n * $atoms;
+    $c['calc_at'] = round(($atomCnt / $totalAtomCount) * 100.0, 10);
+  }
+  unset($c);
+  $elemAtoms = [];
+  $elemMoles = [];
+  $elemTotalAtoms = 0.0;
+  foreach ($components as $i => $c) {
+    $n = $moles[$i];
+    if ($n <= 0) continue;
+    $comp = parse_component_composition($c['composition'] ?? null);
+    if (!$comp) continue;
+    foreach ($comp as $el => $cnt) {
+      $cnt = (float)$cnt;
+      $atomsAdded = $n * $cnt;
+      $elemAtoms[$el] = ($elemAtoms[$el] ?? 0.0) + $atomsAdded;
+      $elemMoles[$el] = ($elemMoles[$el] ?? 0.0) + $atomsAdded;
+      $elemTotalAtoms += $atomsAdded;
+    }
+  }
+  if ($elemTotalAtoms <= $EPS) return [];
+  $weights = atomic_weights_for_elements();
+  $out = [];
+  $massTotal = 0.0;
+  foreach ($elemAtoms as $el => $a) {
+    $out[$el] = [
+      'c_mol' => round(($elemMoles[$el] / $elemTotalAtoms) * 100.0, 10),
+      'c_at'  => round(($a / $elemTotalAtoms) * 100.0, 10),
+      'c_wt'  => null,
+    ];
+    if (isset($weights[$el])) {
+      $mass = $a * $weights[$el];
+      $out[$el]['_mass'] = $mass;
+      $massTotal += $mass;
+    }
+  }
+  if ($massTotal > $EPS) {
+    foreach ($out as $el => &$row) {
+      if (isset($row['_mass'])) {
+        $row['c_wt'] = round(($row['_mass'] / $massTotal) * 100.0, 10);
+        unset($row['_mass']);
+      }
+    }
+    unset($row);
+  } 
+  else {
+    foreach ($out as &$row) unset($row['_mass']);
+    unset($row);
+  }
+  ksort($out);
+  return $out;
+}
+function recalculate_record_composition_storage(PDO $pdo, int $jo_record_id): array {
+  if ($jo_record_id <= 0) {
+    throw new InvalidArgumentException('Invalid jo_record_id');
+  }
+  $stRec = $pdo->prepare("
+    SELECT id, re_ion, re_conc_value, re_conc_unit
+    FROM jo_records
+    WHERE id = ?
+    LIMIT 1
+  ");
+  $stRec->execute([$jo_record_id]);
+  $rec = $stRec->fetch(PDO::FETCH_ASSOC);
+  if (!$rec) {
+    throw new RuntimeException("JO record {$jo_record_id} not found.");
+  }
+  $reIon = trim((string)($rec['re_ion'] ?? ''));
+  $reConcValue = isset($rec['re_conc_value']) ? (float)$rec['re_conc_value'] : null;
+  $reConcUnit = in_array(($rec['re_conc_unit'] ?? null), ['mol%','wt%','at%'], true)
+    ? $rec['re_conc_unit']
+    : null;
+  $stComp = $pdo->prepare("
+    SELECT
+      cc.id AS composition_component_row_id,
+      cc.component,
+      cc.value,
+      cc.unit,
+      cc.component_id,
+      jc.mw,
+      jc.atom_number,
+      jc.composition
+    FROM jo_composition_components cc
+    LEFT JOIN jo_components jc
+      ON jc.id = cc.component_id
+    WHERE cc.jo_record_id = ?
+    ORDER BY cc.id ASC
+  ");
+  $stComp->execute([$jo_record_id]);
+  $compRows = $stComp->fetchAll(PDO::FETCH_ASSOC);
+  if (!$compRows) {
+    return [
+      'jo_record_id' => $jo_record_id,
+      'components_updated' => 0,
+      'elements_inserted' => 0,
+      'note' => 'No component rows found.'
+    ];
+  }
+  $calcRows = array_map(function(array $r) {
+    return [
+      'row_id' => (int)$r['composition_component_row_id'],
+      'id' => isset($r['component_id']) ? (int)$r['component_id'] : null,
+      'component' => $r['component'],
+      'value' => $r['value'],
+      'unit' => $r['unit'],
+      'mw' => $r['mw'],
+      'atom_number' => $r['atom_number'],
+      'composition' => $r['composition'],
+    ];
+  }, $compRows);
+  $calcRows = fetch_component_details($calcRows, $pdo);
+  $elementRows = calculate_composition_storage_payload($calcRows);
+  try {
+    $stUpdComp = $pdo->prepare("
+      UPDATE jo_composition_components
+      SET
+        component_id = :component_id,
+        calc_mol = :calc_mol,
+        calc_wt = :calc_wt,
+        calc_at = :calc_at
+      WHERE id = :id
+        AND jo_record_id = :jo_record_id
+    ");
+    $componentsUpdated = 0;
+    foreach ($calcRows as $r) {
+      $stUpdComp->execute([
+        ':component_id' => $r['id'] ?? null,
+        ':calc_mol' => $r['calc_mol'] ?? null,
+        ':calc_wt' => $r['calc_wt'] ?? null,
+        ':calc_at' => $r['calc_at'] ?? null,
+        ':id' => $r['row_id'],
+        ':jo_record_id' => $jo_record_id,
+      ]);
+      $componentsUpdated += $stUpdComp->rowCount();
+    }
+
+    $stDelElem = $pdo->prepare("DELETE FROM jo_composition_elements WHERE record_id = ?");
+    $stDelElem->execute([$jo_record_id]);
+    $stInsElem = $pdo->prepare("
+      INSERT INTO jo_composition_elements
+        (element, c_mol, c_wt, re_c, re_c_unit, record_id)
+      VALUES
+        (:element, :c_mol, :c_wt, :re_c, :re_c_unit, :record_id)
+    ");
+    $elementsInserted = 0;
+    foreach ($elementRows as $el => $row) {
+      $isRe = ($reIon !== '' && $el === $reIon);
+      $stInsElem->execute([
+        ':element' => $el,
+        ':c_mol' => $row['c_mol'] ?? null,
+        ':c_wt' => $row['c_wt'] ?? null,
+        ':re_c' => $isRe ? $reConcValue : null,
+        ':re_c_unit' => $isRe ? $reConcUnit : null,
+        ':record_id' => $jo_record_id,
+      ]);
+      $elementsInserted++;
+    }
+
+    if ($reIon !== '' && !isset($elementRows[$reIon])) {
+      $stInsElem->execute([
+        ':element' => $reIon,
+        ':c_mol' => null,
+        ':c_wt' => null,
+        ':re_c' => $reConcValue,
+        ':re_c_unit' => $reConcUnit,
+        ':record_id' => $jo_record_id,
+      ]);
+      $elementsInserted++;
+    }
+    return [
+      'jo_record_id' => $jo_record_id,
+      'components_updated' => $componentsUpdated,
+      'elements_inserted' => $elementsInserted,
+      'note' => 'Recalculation successful.'
+    ];
+  } 
+  catch (Throwable $e) {
+    throw $e;
+  }
+}
+function find_composition_backfill_candidates(PDO $pdo, int $windowSeconds = 600, int $limit = 200): array {
+  $sql = "
+    SELECT DISTINCT r.id
+    FROM jo_records r
+    LEFT JOIN jo_composition_components cc
+      ON cc.jo_record_id = r.id
+    LEFT JOIN jo_composition_elements ce
+      ON ce.record_id = r.id
+    WHERE
+      (
+        cc.id IS NOT NULL AND (
+          cc.component_id IS NULL OR
+          cc.calc_mol IS NULL OR
+          cc.calc_wt IS NULL OR
+          cc.calc_at IS NULL
+        )
+      )
+      OR ce.id IS NULL
+      OR (
+        ce.updated_at IS NOT NULL
+        AND r.date_submitted IS NOT NULL
+        AND ABS(TIMESTAMPDIFF(SECOND, r.date_submitted, ce.updated_at)) <= :window_seconds
+      )
+    ORDER BY r.id DESC
+  ";
+  if ($limit !== null && $limit > 0) {
+    $sql .= " LIMIT " . (int)$limit;
+  }
+  $st = $pdo->prepare($sql);
+  $st->bindValue(':window_seconds', $windowSeconds, PDO::PARAM_INT);
+  $st->execute();
+  return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+}
+function backfill_composition_storage(PDO $pdo, int $windowSeconds = 600, int $limit = 200): array {
+  $ids = find_composition_backfill_candidates($pdo, $windowSeconds, $limit);
+  $results = [];
+  $ok = 0;
+  $fail = 0;
+  foreach ($ids as $jo_record_id) {
+    try {
+      $results[] = recalculate_record_composition_storage($pdo, $jo_record_id);
+      $ok++;
+    } catch (Throwable $e) {
+      $results[] = [
+        'jo_record_id' => $jo_record_id,
+        'error' => $e->getMessage(),
+      ];
+      $fail++;
+    }
+  }
+  return [
+    'candidate_count' => count($ids),
+    'ok' => $ok,
+    'fail' => $fail,
+    'results' => $results,
+  ];
 }

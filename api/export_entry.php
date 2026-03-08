@@ -12,6 +12,7 @@
  */
 declare(strict_types=1);
 require 'config.inc.php';
+require 'records.inc.php';
 
 function fail(string $msg, int $http = 400): void {
   http_response_code($http);
@@ -25,27 +26,6 @@ function as_int($v): ?int {
   if ($v === '' || $v === null) return null;
   if (!preg_match('/^-?\d+$/', (string)$v)) return null;
   return (int)$v;
-}
-function host_type_label(?string $v): ?string {
-  if ($v === null || $v === '') return null;
-  $map = [
-    'glass'          => 'Glass (G)',
-    'glass_ceramic'  => 'Glass-ceramic (GC)',
-    'polycrystal'    => 'Polycrystalline (PC)',
-    'single_crystal' => 'Single-crystalline (SC)',
-    'vapor'          => 'Vapor (V)',
-    'solution'       => 'Solution (S)',
-    'melt'           => 'Melt (M)',
-    'powder'         => 'Powder (P)',
-    'aqua'           => 'Aqueous (A)',
-    'other'          => 'Other',
-  ];
-  return $map[$v] ?? $v;
-}
-function conc_unit_label(?string $v): ?string {
-  if ($v === null || $v === '') return null;
-  $map = ['ions/cm3' => 'ions/cm³'];
-  return $map[$v] ?? $v;
 }
 function norm_ws(?string $s): string {
   $s = (string)($s ?? '');
@@ -252,7 +232,7 @@ try {
     if ($l = kv_line('mag_dipole_note', $jo['mag_dipole_note'] ?? null)) $lines[] = $l;
     if ($l = kv_line('reduced_element_note', $jo['reduced_element_note'] ?? null)) $lines[] = $l;
     if ($l = kv_line('recalculated_loms_note', $jo['recalculated_loms_note'] ?? null)) $lines[] = $l;
-    if ($l = kv_line('extra_notes', stripDBTags($jo['extra_notes']) ?? null)) $lines[] = $l;
+    if ($l = kv_line('extra_notes', strip_db_tags($jo['extra_notes']) ?? null)) $lines[] = $l;
     if (!empty($comp)) {
       $lines[] = '';
       $lines[] = '# Normalized composition';
@@ -317,7 +297,7 @@ try {
   add_row($rows, 'jo_record', $id, null, 'mag_dipole_note', $jo['mag_dipole_note'] ?? null);
   add_row($rows, 'jo_record', $id, null, 'reduced_element_note', $jo['reduced_element_note'] ?? null);
   add_row($rows, 'jo_record', $id, null, 'recalculated_loms_note', $jo['recalculated_loms_note'] ?? null);
-  add_row($rows, 'jo_record', $id, null, 'extra_notes', stripDBTags($jo['extra_notes']) ?? null);
+  add_row($rows, 'jo_record', $id, null, 'extra_notes', strip_db_tags($jo['extra_notes']) ?? null);
   $i = 0;
   foreach ($comp as $r) {
     $i++;

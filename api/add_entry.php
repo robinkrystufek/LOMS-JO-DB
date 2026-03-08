@@ -8,9 +8,9 @@
  */
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
-include 'config.inc.php';
+require 'config.inc.php';
 require 'auth_user.inc.php';
-include 'add_entry.inc.php';
+require 'add_entry.inc.php';
 $UPLOAD_BASE = dirname(__DIR__) . '/uploads/loms';    // uploads/loms/<jo_record_id>/
 $MAX_UPLOAD_BYTES = 20 * 1024 * 1024;                 // 20 MB
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -38,7 +38,7 @@ $article_metadata = parse_JSON_POST($_POST['article_metadata']);
 $alex_refs = '{}';
 $alex_citations = '{}';
 if ($doi !== null) {
-  require_once __DIR__ . '/lookup_doi.php';
+  require_once 'lookup_doi.php';
   try {
     $doi = normalize_doi($doi);
     $lookup = doi_lookup_fetch($doi);
@@ -413,22 +413,8 @@ try {
       }
     }
   }
-  $compRows = fetchComponentDetails($compRows, $pdo);
-  if (!empty($compRows)) {
-    $insComp = $pdo->prepare("
-      INSERT INTO jo_composition_components (jo_record_id, component, value, unit, component_id)
-      VALUES (:jo_record_id, :component, :value, :unit, :component_id)
-    ");
-    foreach ($compRows as $r) {
-      $insComp->execute([
-        ':jo_record_id' => $jo_record_id,
-        ':component' => $r['component'],
-        ':value' => $r['value'],
-        ':unit' => $r['unit'],
-        ':component_id' => $r['id']
-      ]);
-    }
-  }
+  update_composition($compRows, $pdo, $jo_record_id, $re_ion, $re_conc_value, $re_conc_unit);
+  $backfill_status = backfill_composition_storage($pdo);
   $storedRelPath = null;
   $hasUpload = isset($_FILES['jo_recalc_file']) && is_array($_FILES['jo_recalc_file']) && ($_FILES['jo_recalc_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
   if ($hasUpload) {
@@ -480,6 +466,7 @@ try {
   $pdo->commit();
   echo json_encode([
     'ok' => true,
+    'component_storage' => $backfill_status,
     'publication_id' => $publication_id,
     'jo_record_id' => $jo_record_id,
     'loms_file_path' => $storedRelPath,
