@@ -145,6 +145,9 @@ try {
         cc.component AS component,
         cc.value AS value,
         cc.unit AS unit,
+        cc.calc_mol AS calc_mol,
+        cc.calc_wt AS calc_wt,
+        cc.calc_at AS calc_at,
         jc.cid AS cid,
         jc.pubchem_name AS pubchem_name,
         jc.mw AS mw,
@@ -158,26 +161,50 @@ try {
       ORDER BY cc.jo_record_id ASC, cc.id ASC
     ");
     $stC->execute($recordIds);
-    $rid = 0;
     while ($cc = $stC->fetch()) {
       $rid = (int)$cc['jo_record_id'];
       if (!isset($componentsByRecord[$rid])) $componentsByRecord[$rid] = [];
       $componentsByRecord[$rid][] = [
-        'component' => $cc['component'],
-        'value' => $cc['value'],
-        'unit' => $cc['unit'],
-        'cid' => $cc['cid'],
-        'pubchem_name' => $cc['pubchem_name'],
-        'mw' => $cc['mw'],
-        'atom_number' => $cc['atom_number'],
-        'composition' => $cc['composition'],
-        'pubchem_details' => $cc['pubchem_details']
+        'component'       => $cc['component'],
+        'value'           => $cc['value'],
+        'unit'            => $cc['unit'],
+        'c_mol'           => $cc['calc_mol'],
+        'c_wt'            => $cc['calc_wt'],
+        'c_at'            => $cc['calc_at'],
+        'cid'             => $cc['cid'],
+        'pubchem_name'    => $cc['pubchem_name'],
+        'mw'              => $cc['mw'],
+        'atom_number'     => $cc['atom_number'],
+        'composition'     => $cc['composition'],
+        'pubchem_details' => json_decode($cc['pubchem_details']),
       ];
     }
-    foreach ($componentsByRecord as $rid => &$components) {
-      $elementalCompositionByRecord[$rid] = normalize_composition($components);
+    $stE = $pdo->prepare("
+      SELECT
+        record_id,
+        element,
+        c_mol,
+        c_wt,
+        re_c,
+        re_c_unit
+      FROM jo_composition_elements
+      WHERE record_id IN ($placeholders)
+      ORDER BY record_id ASC, element ASC
+    ");
+    $stE->execute($recordIds);
+    while ($er = $stE->fetch()) {
+      $rid = (int)$er['record_id'];
+      if (!isset($elementalCompositionByRecord[$rid])) {
+        $elementalCompositionByRecord[$rid] = [];
+      }
+      $elementalCompositionByRecord[$rid][$er['element']] = [
+        'c_mol'     => $er['c_mol'],
+        'c_wt'      => $er['c_wt'],
+        'c_at'      => $er['c_mol'],
+        're_c'      => $er['re_c'],
+        're_c_unit' => $er['re_c_unit'],
+      ];
     }
-    unset($components);
   }
 
   $items = array_map(function(array $r) use ($componentsByRecord, $elementalCompositionByRecord) {

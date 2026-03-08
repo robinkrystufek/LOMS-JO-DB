@@ -125,41 +125,190 @@ function apply_advanced_composition_filter(array $get, array &$where, array &$pa
     $o = trim((string)$ruleOp[$i]);
     $v = trim((string)$ruleVal[$i]);
     $u = trim((string)$ruleUnit[$i]);
+
     if ($c === '' || $v === '' || $u === '') continue;
     if (!isset($allowedOps[$o])) continue;
-    if(($allowedOps[$o] === '>=' && $v <= 0) || ($allowedOps[$o] === '>' && $v < 0)) {
+    if (!is_numeric($v)) continue;
+    $vNum = (float)$v;
+    if (($allowedOps[$o] === '>=' && $vNum <= 0) || ($allowedOps[$o] === '>' && $vNum < 0)) {
       continue;
     }
-    $pC = ":rc{$i}";
-    $pV = ":rv{$i}";
-    $params[$pC] = $c;
-    $params[$pV] = (float)$v;
-    $unitSql = '';
-    if ($u != 'any%') {
-      $pU = ":ru{$i}";
-      $params[$pU] = $u;
-      $unitSql = " AND cc.unit = $pU ";
-    }
-    if ($o === '<=' || $o === '<') {
-      $where[] = "(NOT EXISTS (
-          SELECT 1 FROM jo_composition_components cc
-          WHERE cc.jo_record_id = r.id
-            AND cc.component LIKE CONCAT('%', $pC, '%')
-            $unitSql
-        ) OR EXISTS (
-          SELECT 1 FROM jo_composition_components cc
-          WHERE cc.jo_record_id = r.id
-            AND cc.component LIKE CONCAT('%', $pC, '%')
-            $unitSql
-            AND cc.value <= $pV
-        ))";
-    } else {
-      $where[] = "EXISTS (
+
+    $pCC1 = ":rcc1{$i}";
+    $pCC2 = ":rcc2{$i}";
+    $pCE1 = ":rce1{$i}";
+    $pCE2 = ":rce2{$i}";
+    $pV1  = ":rv1{$i}";
+    $pV2  = ":rv2{$i}";
+    $pV3  = ":rv3{$i}";
+    $pV4  = ":rv4{$i}";
+    $pV5  = ":rv5{$i}";
+    $params[$pCC1] = $c;
+    $params[$pCE1] = $c;
+    $params[$pV1]  = $vNum;
+    $params[$pV2]  = $vNum;
+    $existsCompSql = '';
+    $matchCompSql  = '';
+    $existsElemSql = '';
+    $matchElemSql  = '';
+
+    if ($u === 'mol%') {
+      $existsCompSql = "
         SELECT 1 FROM jo_composition_components cc
         WHERE cc.jo_record_id = r.id
-          AND cc.component LIKE CONCAT('%', $pC, '%')
-          $unitSql
-          AND cc.value {$allowedOps[$o]} $pV
+          AND cc.component LIKE CONCAT('%', $pCC2, '%')
+          AND cc.calc_mol IS NOT NULL
+      ";
+      $matchCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC1, '%')
+          AND cc.calc_mol IS NOT NULL
+          AND cc.calc_mol {$allowedOps[$o]} $pV2
+      ";
+      $existsElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE2
+          AND ce.c_mol IS NOT NULL
+      ";
+      $matchElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE1
+          AND ce.c_mol IS NOT NULL
+          AND ce.c_mol {$allowedOps[$o]} $pV1
+      ";
+    } 
+    elseif ($u === 'wt%') {
+      $existsCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC2, '%')
+          AND cc.calc_wt IS NOT NULL
+      ";
+      $matchCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC1, '%')
+          AND cc.calc_wt IS NOT NULL
+          AND cc.calc_wt {$allowedOps[$o]} $pV2
+      ";
+      $existsElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE2
+          AND ce.c_wt IS NOT NULL
+      ";
+      $matchElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE1
+          AND ce.c_wt IS NOT NULL
+          AND ce.c_wt {$allowedOps[$o]} $pV1
+      ";
+    } 
+    elseif ($u === 'at%') {
+      $existsCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC2, '%')
+          AND cc.calc_at IS NOT NULL
+      ";
+      $matchCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC1, '%')
+          AND cc.calc_at IS NOT NULL
+          AND cc.calc_at {$allowedOps[$o]} $pV2
+      ";
+      $existsElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE2
+          AND ce.c_mol IS NOT NULL
+      ";
+      $matchElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE1
+          AND ce.c_mol IS NOT NULL
+          AND ce.c_mol {$allowedOps[$o]} $pV1
+      ";
+    } 
+    elseif ($u === 'any%') {
+      $params[$pV3] = $vNum;
+      $params[$pV4] = $vNum;
+      $params[$pV5] = $vNum;
+      $existsCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC2, '%')
+          AND (
+            cc.calc_mol IS NOT NULL
+            OR cc.calc_wt IS NOT NULL
+            OR cc.calc_at IS NOT NULL
+          )
+      ";
+      $matchCompSql = "
+        SELECT 1 FROM jo_composition_components cc
+        WHERE cc.jo_record_id = r.id
+          AND cc.component LIKE CONCAT('%', $pCC1, '%')
+          AND (
+            (cc.calc_mol IS NOT NULL AND cc.calc_mol {$allowedOps[$o]} $pV1)
+            OR (cc.calc_wt  IS NOT NULL AND cc.calc_wt  {$allowedOps[$o]} $pV2)
+            OR (cc.calc_at  IS NOT NULL AND cc.calc_at  {$allowedOps[$o]} $pV3)
+          )
+      ";
+      $existsElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE2
+          AND (
+            ce.c_mol IS NOT NULL
+            OR ce.c_wt IS NOT NULL
+          )
+      ";
+      $matchElemSql = "
+        SELECT 1 FROM jo_composition_elements ce
+        WHERE ce.record_id = r.id
+          AND ce.element = $pCE1
+          AND (
+            (ce.c_mol IS NOT NULL AND ce.c_mol {$allowedOps[$o]} $pV4)
+            OR (ce.c_wt  IS NOT NULL AND ce.c_wt  {$allowedOps[$o]} $pV5)
+          )
+      ";
+    } 
+    else {
+      continue;
+    }
+    if ($o === '<=' || $o === '<') {
+      $where[] = "(
+        (
+          NOT EXISTS (
+            $existsCompSql
+          )
+          AND NOT EXISTS (
+            $existsElemSql
+          )
+        )
+        OR EXISTS (
+          $matchCompSql
+        )
+        OR EXISTS (
+          $matchElemSql
+        )
+      )";
+      $params[$pCC2] = $c;
+      $params[$pCE2] = $c;
+    } else {
+      $where[] = "(
+        EXISTS (
+          $matchCompSql
+        )
+        OR EXISTS (
+          $matchElemSql
+        )
       )";
     }
   }
@@ -182,134 +331,6 @@ function apply_id_filter(array $get, array &$where, array &$params) {
     }
   }
   else $where[] = "r.review_status='approved'";
-}
-function parse_composition($composition): ?array {
-    if (!$composition) return null;
-    if (is_string($composition)) {
-        $composition = json_decode($composition, true);
-    }
-    if (!is_array($composition) || !$composition) return null;
-    $out = [];
-    foreach ($composition as $el => $cnt) {
-        $el = trim((string)$el);
-        if ($el === '') continue;
-        $v = (float)$cnt;
-        if ($v <= 0) continue;
-        $out[$el] = ($out[$el] ?? 0.0) + $v;
-    }
-    return $out ?: null;
-}
-function atomCountFromComposition($composition, float $fallbackAtomNumber = 0.0): float {
-    $comp = parse_composition($composition);
-    if (!$comp) return $fallbackAtomNumber;
-    $sum = 0.0;
-    foreach ($comp as $cnt) $sum += (float)$cnt;
-    return $sum > 0 ? $sum : $fallbackAtomNumber;
-}
-function normalize_composition(array &$components): array {
-  if (!$components) return [];
-  $EPS = 1e-12;
-  $moles = [];
-  $totalMoles = 0.0;
-  foreach ($components as $i => $c) {
-    $val  = (float)($c['value'] ?? 0);
-    $unit = strtolower(trim((string)($c['unit'] ?? '')));
-    $mw   = (float)($c['mw'] ?? 0);
-    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
-    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
-    if ($val <= 0) { $moles[$i] = 0.0; continue; }
-    if ($unit === 'mol%') {
-      $n = $val;
-    } 
-    elseif ($unit === 'wt%') {
-      $n = ($mw > $EPS) ? ($val / $mw) : 0.0;
-    } 
-    elseif ($unit === 'at%') {
-      $n = ($atoms > $EPS) ? (($val / 100.0) * 100.0 / $atoms) : 0.0;
-    } 
-    else {
-      $n = 0.0;
-    }
-    $moles[$i] = $n;
-    $totalMoles += $n;
-  }
-  if ($totalMoles <= $EPS) return [];
-  $totalMass = 0.0;
-  $totalAtomCount = 0.0;
-  foreach ($components as $i => $c) {
-    $n = $moles[$i];
-    if ($n <= 0) continue;
-    $mw = (float)($c['mw'] ?? 0);
-    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
-    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
-    $totalMass      += $n * $mw;
-    $totalAtomCount += $n * $atoms;
-  }
-  if ($totalMass <= $EPS)      $totalMass = 1.0;
-  if ($totalAtomCount <= $EPS) $totalAtomCount = 1.0;
-  foreach ($components as $i => &$c) {
-    $n = $moles[$i];
-    $mw = (float)($c['mw'] ?? 0);
-    $fallbackAtoms = (float)($c['atom_number'] ?? 0);
-    $atoms = atomCountFromComposition($c['composition'] ?? null, $fallbackAtoms);
-    $c['c_mol'] = round(($n / $totalMoles) * 100.0, 6);
-    $mass = $n * $mw;
-    $c['c_wt']  = round(($mass / $totalMass) * 100.0, 6);
-    $atomCnt = $n * $atoms;
-    $c['c_at']  = round(($atomCnt / $totalAtomCount) * 100.0, 6);
-  }
-  unset($c);
-  $elemAtoms = [];
-  $elemTotal = 0.0;
-  foreach ($components as $i => $c) {
-    $n = $moles[$i];
-    if ($n <= 0) continue;
-    $comp = parse_composition($c['composition'] ?? null);
-    if (!$comp) continue;
-    foreach ($comp as $el => $cnt) {
-      $a = $n * (float)$cnt;
-      $elemAtoms[$el] = ($elemAtoms[$el] ?? 0.0) + $a;
-      $elemTotal += $a;
-    }
-  }
-  if ($elemTotal <= $EPS) return [];
-  $out = [];
-  $weights = atomic_weights();
-  $massTotal = 0.0;
-  foreach ($elemAtoms as $el => $a) {
-    $out[$el]["c_at"] = round(($a / $elemTotal) * 100.0, 6);
-    if (!isset($weights[$el])) {
-      $out[$el]["c_wt"] = null;
-    } 
-    else {
-      $mw = $weights[$el];
-      $mass = $a * $mw;
-      $out[$el]["c_wt"] = $mass;
-      $massTotal += $mass;
-    }
-  }
-  if ($massTotal > $EPS) {
-    foreach ($out as $el => &$data) {
-      if ($data["c_wt"] !== null) {
-        $data["c_wt"] = round(($data["c_wt"] / $massTotal) * 100.0, 6);
-      }
-    }
-    unset($data);
-  }
-  ksort($out);
-  return $out;
-}
-function atomic_weights(): array {
-  return [
-    'H'=>1.00794,  'He'=>4.002602,
-    'Li'=>6.941,   'Be'=>9.012182, 'B'=>10.811,  'C'=>12.0107, 'N'=>14.0067, 'O'=>15.9994, 'F'=>18.9984032, 'Ne'=>20.1797,
-    'Na'=>22.98976928,'Mg'=>24.3050,'Al'=>26.9815386,'Si'=>28.0855,'P'=>30.973762,'S'=>32.065,'Cl'=>35.453,'Ar'=>39.948,
-    'K'=>39.0983,'Ca'=>40.078,'Sc'=>44.955912,'Ti'=>47.867,'V'=>50.9415,'Cr'=>51.9961,'Mn'=>54.938045,'Fe'=>55.845,'Co'=>58.933195,'Ni'=>58.6934,'Cu'=>63.546,'Zn'=>65.38,'Ga'=>69.723,'Ge'=>72.63,'As'=>74.92160,'Se'=>78.96,'Br'=>79.904,'Kr'=>83.798,
-    'Rb'=>85.4678,'Sr'=>87.62,'Y'=>88.90585,'Zr'=>91.224,'Nb'=>92.90638,'Mo'=>95.96,'Tc'=>98.0,'Ru'=>101.07,'Rh'=>102.90550,'Pd'=>106.42,'Ag'=>107.8682,'Cd'=>112.411,'In'=>114.818,'Sn'=>118.710,'Sb'=>121.760,'Te'=>127.60,'I'=>126.90447,'Xe'=>131.293,
-    'Cs'=>132.9054519,'Ba'=>137.327,'La'=>138.90547,'Ce'=>140.116,'Pr'=>140.90765,'Nd'=>144.242,'Pm'=>145.0,'Sm'=>150.36,'Eu'=>151.964,'Gd'=>157.25,'Tb'=>158.92535,'Dy'=>162.500,'Ho'=>164.93032,'Er'=>167.259,'Tm'=>168.93421,'Yb'=>173.054,'Lu'=>174.9668,
-    'Hf'=>178.49,'Ta'=>180.94788,'W'=>183.84,'Re'=>186.207,'Os'=>190.23,'Ir'=>192.217,'Pt'=>195.084,'Au'=>196.966569,'Hg'=>200.59,'Tl'=>204.3833,'Pb'=>207.2,'Bi'=>208.98040,'Po'=>209.0,'At'=>210.0,'Rn'=>222.0,
-    'Fr'=>223.0,'Ra'=>226.0,'Ac'=>227.0,'Th'=>232.03806,'Pa'=>231.03588,'U'=>238.02891,
-  ];
 }
 function host_type_label(?string $v): ?string {
   if ($v === null || $v === '') return null;

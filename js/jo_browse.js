@@ -201,9 +201,9 @@ function render(items) {
     const pAt = columnPrecision(comps, c => Number(c.c_at), 3);
     const compRows = comps.map(c => {
       const value    = fmtFixed(Number(c.value), pValue);
-      const cMol     = fmtFixed(c.c_mol, pMol);
-      const cWt      = fmtFixed(c.c_wt,  pWt);
-      const cAt      = fmtFixed(c.c_at,  pAt);
+      const cMol     = fmtFixed(Number(c.c_mol), pMol);
+      const cWt      = fmtFixed(Number(c.c_wt),  pWt);
+      const cAt      = fmtFixed(Number(c.c_at),  pAt);
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -258,6 +258,7 @@ function render(items) {
     const elementRows = elements.map(c => {
       const cWt      = fmtFixed(Number(c.c_wt),  Math.max (pElementsWt, 1));
       const cAt      = fmtFixed(Number(c.c_at),  Math.max (pElementsAt, 1));
+      const cRE      = fmtFixed(Number(c.re_c),  Math.max (pElementsAt, 1));
       return `
         <tr>
           <td style="overflow: inherit;">
@@ -267,13 +268,13 @@ function render(items) {
             </button>
           </td>
           <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cAt} mol%
+              ${cAt == "n/a" ? (c.re_c && c.re_c_unit == "mol%" ? cRE + " mol%" : "n/a") : cAt + " mol%"}
           </td>
           <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cWt} wt%
+              ${cWt == "n/a" ? (c.re_c && c.re_c_unit == "wt%" ? cRE + " wt%" : "n/a") : cWt + " wt%"}
           </td>
           <td style="text-align:right; overflow: inherit; padding-right: 3em;color:var(--text-muted);">
-              ${cAt} at%
+              ${cAt == "n/a" ? (c.re_c && c.re_c_unit == "at%" ? cRE + " at%" : "n/a") : cAt + " at%"}
           </td>
         </tr>
       `;
