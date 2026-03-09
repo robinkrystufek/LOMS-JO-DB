@@ -26,7 +26,7 @@ function format_value($val) {
     $mantStr = rtrim(rtrim(number_format($mant, 3, '.', ''), '0'), '.');
     return $mantStr . ' × 10' . strtr((string)$exp, $map_to_superscript);
   }
-  $v = (string)$val;
+  $v = $val >= 10 ? number_format($val, 1, '.', '') : ($val >= 1 ? number_format($val, 2, '.', '') : number_format($val, 3, '.', ''));
   if (str_contains($v, '.')) $v = rtrim(rtrim($v, '0'), '.');
   return $v;
 }

@@ -125,6 +125,9 @@ function compositionShorthand(components) {
     const decs = valid.map(c => estimateDecimals(c.value));
     precision = Math.min(...decs);
     if (precision === 0 && decs.some(d => d > 0)) precision = 1;
+    if (valid.every(c => c.value >= 0.01)) precision = 2;
+    if (valid.every(c => c.value >= 0.1)) precision = 1;
+    if (valid.every(c => c.value >= 1)) precision = 0;    
     precision = Math.min(precision, 3);
   }
   const parts = valid.map(c => {
@@ -176,7 +179,7 @@ function render(items) {
     row.innerHTML = `
     <td>${esc(it.jo_record_id)}</td>
       <td>${esc(it.re_ion)}</td>
-      <td${esc(it.concentration_note) != "" && !it.concentration ? ' style="overflow: visible"' : ''}>${esc(it.concentration)}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
+      <td${esc(it.concentration_note) != "" && !it.concentration ? ' style="overflow: visible"' : ''}>${esc(fmtNum(it.concentration))}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
       <td>${esc(compositionShorthand(it.details.composition_components) || it.details.composition || it.composition)}</td>
       <td>${esc(it.host)}</td>
       <td>${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''}</td>
@@ -296,7 +299,8 @@ function render(items) {
 
     let lomsHtml = '';
     if (d.loms_file_url) {
-    lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
+      const confirmMsg = "This LOMS source file may be provided by a third party and should be antivirus-checked before use. Click OK to download or Cancel to return.";
+      lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download onclick="return confirm('${esc(confirmMsg)}')"><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
     }
     const stateMapRI = {
       0: "<i class='fa fa-times'></i> ",
@@ -318,7 +322,7 @@ function render(items) {
     det.innerHTML = `
       <td colspan="10" style="overflow: visible;">
         <div class="jo-db-details">
-          <h3>Record details – ${esc(it.re_ion)} in ${esc(d.host)}</h3>
+          <h3>Record details – ${esc(it.re_ion)} in ${esc(it.host)}</h3>
           <dl>
             <dt>Sample label</dt>
             <dd>
