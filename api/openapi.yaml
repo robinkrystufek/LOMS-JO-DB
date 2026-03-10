@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: LOMS JO Database REST API
-  version: "1.0.0"
+  version: "1.1.0"
   description: >
-    REST-style API for searching and exporting Judd-Ofelt records and
-    retrieving publication metadata.
+    REST-style API for searching and exporting Judd-Ofelt records,
+    retrieving publication metadata, browsing approved components,
+    and enumerating supported chemical elements.
 servers:
   - url: https://www.loms.cz/jo-db/api/rest
 
@@ -15,6 +16,8 @@ tags:
     description: Publication metadata and DOI index for publications with approved JO records.
   - name: Components
     description: Search and retrieve chemical components linked to approved JO records.
+  - name: Elements
+    description: Enumerate periodic-table elements present in approved JO records and jump to record search by element.
 
 paths:
   /records:
@@ -51,11 +54,13 @@ paths:
         - name: element_q
           in: query
           description: >
-            Element symbol (e.g. "O", "F", "Yb") used for element-aware matching.
+            Element-aware record filter. Accepts one symbol or a comma-separated list
+            of element symbols (for example "O", "Yb", or "Na,Al,F"). Matching is
+            performed against normalized elemental composition entries.
           schema:
             type: string
-            pattern: "^[A-Za-z]{1,2}$"
-            example: O
+            pattern: "^[A-Za-z]{1,2}(\\s*,\\s*[A-Za-z]{1,2})*$"
+            example: "Na,Al,F"
         - name: pub_doi_q
           in: query
           description: Publication DOI free-text filter.
@@ -389,11 +394,13 @@ paths:
         - name: element_q
           in: query
           description: >
-            Element symbol (e.g. "O", "F", "Yb") used for element-aware matching.
+            Element-aware record filter. Accepts one symbol or a comma-separated list
+            of element symbols (for example "O", "Yb", or "Na,Al,F"). Matching is
+            performed against normalized elemental composition entries.
           schema:
             type: string
-            pattern: "^[A-Za-z]{1,2}$"
-            example: O
+            pattern: "^[A-Za-z]{1,2}(\\s*,\\s*[A-Za-z]{1,2})*$"
+            example: "Na,Al,F"
         - name: pub_doi_q
           in: query
           description: Publication DOI free-text filter.
@@ -512,6 +519,8 @@ paths:
         If query parameter id is provided, returns the matching row from jo_components
         together with approved JO record ids linked through jo_composition_components.
         If id is omitted, returns all components that are linked to approved JO records.
+        The optional element_q parameter applies element-aware filtering before returning
+        matching components.
       parameters:
         - name: id
           in: query
@@ -520,6 +529,16 @@ paths:
             type: integer
             minimum: 1
             example: 123
+        - name: element_q
+          in: query
+          description: >
+            Optional element-aware component filter. Accepts one symbol or a comma-separated
+            list of element symbols (for example "O" or "Na,Al,F"). Intended for the
+            newer get_components element search logic.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{1,2}(\\s*,\\s*[A-Za-z]{1,2})*$"
+            example: "Na,Al,F"
       responses:
         "200":
           description: Component list or single component response.
@@ -530,7 +549,7 @@ paths:
                   - $ref: "#/components/schemas/ComponentsListResponse"
                   - $ref: "#/components/schemas/ComponentByIdResponse"
         "400":
-          description: Invalid component id.
+          description: Invalid component id or malformed element_q.
           content:
             application/json:
               schema:
@@ -572,6 +591,77 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Component not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elements:
+    get:
+      tags: [Elements]
+      summary: Enumerate periodic-table elements and their presence in approved JO records
+      description: >
+        Returns a fixed periodic-table array ordered by atomic number. Each item indicates
+        whether the element is present in at least one approved JO record. When
+        match_records is non-zero, matching JO record ids are also returned for each element.
+      parameters:
+        - name: match_records
+          in: query
+          description: >
+            Whether to include jo_records arrays populated from approved records.
+            The router defaults this to 1 for the REST endpoint when omitted.
+          schema:
+            oneOf:
+              - type: integer
+                enum: [0, 1]
+              - type: string
+                enum: ["0", "1"]
+            default: 1
+      responses:
+        "200":
+          description: Element list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementsListResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elements/{element}:
+    get:
+      tags: [Elements]
+      summary: Search JO records by element symbol using a REST-style path
+      description: >
+        Convenience route that forwards the path symbol to the records search logic as
+        element_q. For example, /elements/H behaves like /records?element_q=H.
+      parameters:
+        - name: element
+          in: path
+          required: true
+          description: Element symbol.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{1,2}$"
+            example: H
+      responses:
+        "200":
+          description: Paginated list of JO records matching the element filter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordsSearchResponse"
+        "400":
+          description: Invalid element symbol.
           content:
             application/json:
               schema:
@@ -937,6 +1027,29 @@ components:
         data:
           $ref: "#/components/schemas/ComponentDetail"
       additionalProperties: true
+
+    ElementPresence:
+      type: object
+      required: [element, present]
+      properties:
+        element:
+          type: string
+          example: H
+        present:
+          type: boolean
+          example: true
+        jo_records:
+          type: array
+          description: >
+            Included when match_records is enabled; may be absent otherwise.
+          items:
+            type: integer
+      additionalProperties: false
+
+    ElementsListResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/ElementPresence"
 
     AuditTrailResponse:
       type: object

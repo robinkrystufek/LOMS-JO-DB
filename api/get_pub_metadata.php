@@ -68,7 +68,7 @@ try {
     respond(200, [
       'ok' => true,
       'doi' => ($row['doi'] ?? null),
-      'publication_id' => ($row['publication_id'] ?? null),
+      'publication_id' => ($row['id'] ?? null),
       'meta' => $meta,
       'refs' => $refs,
       'raw_row' => $row,

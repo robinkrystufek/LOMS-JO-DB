@@ -18,17 +18,84 @@ function respond(int $code, array $payload): void {
 }
 function format_value($val) {
   if (!is_numeric($val)) return $val;
-  $map_to_superscript = ['0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴','5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'];
+  $map_to_superscript = [
+    '0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴','5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'
+  ];
   $val = (float)$val;
+  if ($val == 0.0) return '0';
   if (abs($val) >= 1000) {
-    $exp = floor(log10(abs($val)));
+    $exp = (int) floor(log10(abs($val)));
     $mant = $val / (10 ** $exp);
     $mantStr = rtrim(rtrim(number_format($mant, 3, '.', ''), '0'), '.');
     return $mantStr . ' × 10' . strtr((string)$exp, $map_to_superscript);
   }
-  $v = $val >= 10 ? number_format($val, 1, '.', '') : ($val >= 1 ? number_format($val, 2, '.', '') : number_format($val, 3, '.', ''));
-  if (str_contains($v, '.')) $v = rtrim(rtrim($v, '0'), '.');
+  $v = $val >= 10
+    ? number_format($val, 1, '.', '')
+    : ($val >= 1
+      ? number_format($val, 2, '.', '')
+      : number_format($val, 3, '.', ''));
+
+  if (str_contains($v, '.')) {
+    $v = rtrim(rtrim($v, '0'), '.');
+  }
   return $v;
+}
+function format_exponent_sup($exp): string {
+  static $map = [
+    '0'=>'⁰','1'=>'¹','2'=>'²','3'=>'³','4'=>'⁴',
+    '5'=>'⁵','6'=>'⁶','7'=>'⁷','8'=>'⁸','9'=>'⁹','-'=>'⁻'
+  ];
+  return strtr((string)$exp, $map);
+}
+function scientific_parts($val): ?array {
+  if (!is_numeric($val)) return null;
+  $val = (float)$val;
+  if ($val == 0.0) {
+    return ['mantissa' => 0.0, 'exp' => 0];
+  }
+  $exp  = (int) floor(log10(abs($val)));
+  $mant = $val / (10 ** $exp);
+  return ['mantissa' => $mant, 'exp' => $exp];
+}
+function decimals_of_formatted_mantissa($val): int {
+  if (!is_numeric($val)) return 0;
+  $parts = scientific_parts($val);
+  if ($parts === null) return 0;
+  $mantStr = format_value($parts['mantissa']);
+  $pos = strpos($mantStr, '.');
+  return $pos === false ? 0 : (strlen($mantStr) - $pos - 1);
+}
+function format_fixed_decimals(float $val, int $decimals): string {
+  $s = number_format($val, $decimals, '.', '');
+  if ($decimals <= 0) return $s;
+  return $s;
+}
+function format_conc_range($lower, $upper, $unit): string {
+  $label = conc_unit_label($unit);
+  if ($lower === null || $lower === '') return '';
+  if ($upper === null || $upper === '') {
+    return trim(format_value($lower) . ' ' . $label);
+  }
+  if ($unit === 'ions/cm3' && is_numeric($lower) && is_numeric($upper)) {
+    $a = scientific_parts($lower);
+    $b = scientific_parts($upper);
+    if ($a !== null && $b !== null) {
+      $sharedExp = $b['exp'];
+      $lowerScaled = (float)$lower / (10 ** $sharedExp);
+      $upperScaled = (float)$upper / (10 ** $sharedExp);
+      $decA = decimals_of_formatted_mantissa($lower);
+      $decB = decimals_of_formatted_mantissa($upper);
+      $sharedDecimals = min($decA, $decB);
+      return trim(
+        format_fixed_decimals($lowerScaled, $sharedDecimals)
+        . '–' .
+        format_fixed_decimals($upperScaled, $sharedDecimals)
+        . ' × 10' . format_exponent_sup($sharedExp)
+        . ' ' . $label
+      );
+    }
+  }
+  return trim(format_value($lower) . '–' . format_value($upper) . ' ' . $label);
 }
 
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -213,15 +280,11 @@ try {
       ucfirst(host_type_label($host_type) ?? $host_type)
     );
     $conc = '';
-    if ($r['re_conc_value'] !== null && $r['re_conc_value'] !== '') {
-      $v = format_value($r['re_conc_value']);
-      $range = $v;
-      if ($r['re_conc_value_upper'] !== null && $r['re_conc_value_upper'] !== '') {
-        $vu = format_value($r['re_conc_value_upper']);
-        $range .= '–' . $vu;
-      }
-      $conc = trim($range . ' ' . conc_unit_label($r['re_conc_unit']));
-    }
+    $conc = format_conc_range(
+      $r['re_conc_value'] ?? null,
+      $r['re_conc_value_upper'] ?? null,
+      $r['re_conc_unit'] ?? ''
+    );
 
     $badges = ["n","C-JO","σFS","MD","RME","LOMS","ρ"];
     $badges_states = [1,1,1,1,1,1,1];

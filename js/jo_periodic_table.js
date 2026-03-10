@@ -107,6 +107,7 @@
     onPick,
     storeToWindow = true,
     compact = false,
+    defaultDisable = false,
     tileMode = "full" // "full" | "symbol"
   } = {}) {
     const cell = compact ? 36 : 44;
@@ -155,13 +156,14 @@
         }
       });
     }
-    function elementButton(e) {
+    function elementButton(e, disable = false) {
       const cat = categoryFor(e);
       const btn = el("button", {
         type: "button",
         "data-z": e.z,
         "data-s": e.s,
         "data-n": e.n,
+        disabled: disable ? "disabled" : null,
         style: `
           position:relative;
           display:flex; flex-direction:column;
@@ -227,17 +229,17 @@
       );
       return btn;
     }
-    function placeMainTable() {
+    function placeMainTable(defaultDisable = false) {
       grid.innerHTML = "";
       for (const e of ELEMENTS) {
-        const btn = elementButton(e);
+        const btn = elementButton(e, defaultDisable);
         btn.style.gridColumn = String(e.g);
         btn.style.gridRow = String(e.p);
         grid.append(btn);
       }
     }
     const fblockWrap = el("div", { style: "display:flex; flex-direction:column; gap:8px;" });
-    function placeFBlockRow(titleText, items) {
+    function placeFBlockRow(titleText, items, defaultDisable = false) {
       const row = el("div", { style: `
         display:grid;
         grid-template-columns: repeat(18, minmax(var(--pt-cell), 1fr));
@@ -253,14 +255,14 @@
         background:#f8f9fa;
         display:flex; align-items:center;
       `}, titleText));    
-      for (const e of items) row.append(elementButton(e));
+      for (const e of items) row.append(elementButton(e, defaultDisable));
       fblockWrap.append(row);
     }
     function setFilter(q) {
       const query = (q || "").trim().toLowerCase();
       const buttons = root.querySelectorAll('button[data-z]');
       if (!query) {
-        buttons.forEach(b => { b.style.outline=""; b.style.opacity="1"; b.disabled=false; });
+        buttons.forEach(b => { b.style.outline=""; b.style.opacity="1"; });
         return;
       }
       buttons.forEach(b => {
@@ -268,7 +270,6 @@
         const n = (b.getAttribute("data-n") || "").toLowerCase();
         const hit = (s === query) || n.includes(query);
         b.style.opacity = hit ? "1" : "0.25";
-        b.disabled = !hit;
         b.style.outline = hit ? "2px solid rgba(0,0,0,.25)" : "";
       });
     }
@@ -279,9 +280,9 @@
         if (enabled.length === 1) enabled[0].click();
       }
     });
-    placeMainTable();
-    placeFBlockRow("Lanthanides (57–71)", LANTH);
-    placeFBlockRow("Actinides (89–103)", ACT);
+    placeMainTable(defaultDisable);
+    placeFBlockRow("Lanthanides (57–71)", LANTH, defaultDisable);
+    placeFBlockRow("Actinides (89–103)", ACT, defaultDisable);
     root.append(header, grid, fblockWrap);
     if (compact) {
       const controls = el("div", { style: `
@@ -395,12 +396,13 @@
       onPick,
       storeToWindow = true,
       compact = false,
-      tileMode = "full"
+      tileMode = "full",
+      defaultDisable = false,
     } = options;
     if (replace) {
       target.querySelectorAll(":scope > [data-periodic-table-root]").forEach(n => n.remove());
     }
-    const ui = createTableUI({ onPick, storeToWindow, compact, tileMode });
+    const ui = createTableUI({ onPick, storeToWindow, compact, tileMode, defaultDisable });
     ui.root.setAttribute("data-periodic-table-root", "1");
     target.append(ui.root);
     return { ...ui, container: target, destroy: () => ui.root.remove() };
@@ -421,8 +423,34 @@
 const table = renderPeriodicTable("#filters-render-slot", {
   compact: true,
   tileMode: "symbol",
+  defaultDisable: true,
   onPick: el => { document.getElementById('filter-composition-element').value = el.symbol; document.getElementById('btn-search').click(); }
 });
-document.getElementById("filter-composition-text").addEventListener("input", e => {
-  table.setHighlightedSymbol(e.target.value);
-});
+async function applyElementAvailabilityToTable(tableInstance) {
+  try {
+    const res = await fetch('api/get_elements.php?match_records=0', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const presentMap = Object.create(null);
+    for (const row of data) {
+      if (row && row.element) {
+        presentMap[row.element] = !!row.present;
+      }
+    }
+    tableInstance.root.querySelectorAll('button[data-s]').forEach(btn => {
+      const symbol = btn.getAttribute('data-s');
+      const present = !!presentMap[symbol];
+      btn.style.pointerEvents = present ? '' : 'none';
+      btn.disabled = !present;
+    });
+  } 
+  catch (err) {
+    console.error('Failed to load element availability:', err);
+  }
+}
+applyElementAvailabilityToTable(table);

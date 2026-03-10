@@ -78,6 +78,18 @@ switch ($resource) {
       require_once __DIR__ . '/../get_components.php';
       exit;
     }
+    case 'elements':
+      // /api/rest/elements
+      if (!isset($segments[1])) {
+        $_GET['match_records'] = $_GET['match_records'] ?? 1;
+        require_once __DIR__ . '/../get_elements.php';
+        exit;
+      }
+      // /api/rest/elements/H
+      $_GET['element_q'] = (string)$segments[1];
+      require_once __DIR__ . '/../get_records.php';
+      exit;
+
 }
 http_response_code(404);
 echo json_encode(["error" => "Endpoint not found"]);

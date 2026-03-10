@@ -80,6 +80,9 @@ function apply_composition_filter(array $get, array &$where, array &$params) {
   $hostType     = trim((string)($get['host_type'] ?? ''));
   $compositionQ = trim((string)($get['composition_q'] ?? ''));
   $elementQ     = trim((string)($get['element_q'] ?? ''));
+  $elementMode = strtolower(trim((string)($get['element_mode'] ?? 'any')));
+  if (!in_array($elementMode, ['any', 'all'], true)) $elementMode = 'any';
+
   if ($reIon !== '') { $where[] = "r.re_ion = :re_ion"; $params[':re_ion'] = $reIon; }
   if ($hostType !== '') { $where[] = "r.host_type = :host_type"; $params[':host_type'] = $hostType; }
   if ($compositionQ !== '') {
@@ -98,17 +101,44 @@ function apply_composition_filter(array $get, array &$where, array &$params) {
     $params[':composition_q_component'] = '%' . $compositionQ . '%';
   }
   if ($elementQ !== '') {
-    $elementQ = ucfirst(strtolower(trim($elementQ)));
-    if (preg_match('/^[A-Z][a-z]?$/', $elementQ)) {
-      $where[] = "(
-        REGEXP_LIKE(r.re_ion, :composition_regex, 'c')
-        OR EXISTS (
-          SELECT 1 FROM jo_composition_components cc
-          WHERE cc.jo_record_id = r.id
-            AND REGEXP_LIKE(cc.component, :component_regex, 'c')
-        ))";
-      $params[':composition_regex'] = $elementQ . '(?![a-z])';
-      $params[':component_regex']   = $elementQ . '(?![a-z])';
+    $rawEls = preg_split('/\s*,\s*/', trim($elementQ));
+    $els = [];
+    foreach ($rawEls as $el) {
+      $el = ucfirst(strtolower(trim($el)));
+      if ($el !== '' && preg_match('/^[A-Z][a-z]?$/', $el)) {
+        $els[$el] = true;
+      }
+    }
+    $els = array_keys($els);
+    if ($els) {  
+      if ($elementMode === 'any') {
+        $placeholders = [];
+        foreach ($els as $i => $el) {
+          $ph = ":element_q_$i";
+          $placeholders[] = $ph;
+          $params[$ph] = $el;
+        }
+        $where[] = "EXISTS (
+          SELECT 1
+          FROM jo_composition_elements ce
+          WHERE ce.record_id = r.id
+            AND ce.element IN (" . implode(', ', $placeholders) . ")
+        )";
+      } 
+      elseif ($elementMode === 'all') {
+        $sub = [];
+        foreach ($els as $i => $el) {
+          $ph = ":element_q_$i";
+          $sub[] = "EXISTS (
+            SELECT 1
+            FROM jo_composition_elements ce$i
+            WHERE ce$i.record_id = r.id
+              AND ce$i.element = $ph
+          )";
+          $params[$ph] = $el;
+        }
+        $where[] = '(' . implode(' AND ', $sub) . ')';
+      }
     }
   }
 }
