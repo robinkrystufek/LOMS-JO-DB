@@ -139,9 +139,10 @@
     const grid = el("div", { style: `
       display:grid;
       grid-template-columns: repeat(18, minmax(var(--pt-cell), 1fr));
-      grid-template-rows: repeat(7, ${compact ? 31 : 54}px);
+      grid-template-rows: repeat(7, ${compact ? 30 : 54}px);
       gap: var(--pt-gap);
       align-items:stretch;
+      margin-top: 2px;
     `});
     let highlightedSymbol = null;
     const selectedSymbols = new Set();
