@@ -554,6 +554,7 @@ function getFilters() {
   const host_type = document.getElementById('filter-host-type')?.value || '';
   const composition_q = document.getElementById('filter-composition-text')?.value || '';
   const element_q = document.getElementById('filter-composition-element')?.value || '';
+  const element_mode = document.getElementById('filter-composition-mode')?.value || '';
   const pub_doi_q = document.getElementById('filter-pub-doi')?.value || '';
   const pub_authors_q = document.getElementById('filter-pub-author')?.value || '';
   const pub_title_q = document.getElementById('filter-pub-title')?.value || '';
@@ -562,7 +563,7 @@ function getFilters() {
   const jo_original = document.getElementById('filter-jo-original')?.checked ? 1 : 0;
   const jo_recalc = document.getElementById('filter-jo-recalc')?.checked ? 1 : 0;
   return {
-    re_ion, host_type, composition_q, pub_doi_q, pub_title_q, pub_authors_q, element_q,
+    re_ion, host_type, composition_q, pub_doi_q, pub_title_q, pub_authors_q, element_q, element_mode,
     has_jo, has_density, 
     jo_original, jo_recalc,
     ...getBadgeFilters()
@@ -632,6 +633,7 @@ function resetSearchInput(reload = true) {
   document.getElementById('advanced-panel').style.display="none";
   document.getElementById('filter-composition-text').value = '';
   document.getElementById('filter-composition-element').value = '';
+  document.getElementById('filter-composition-mode').value = '';
   sortBy = 'id';
   sortDir = 'desc'; 
   const hadParams = window.hasUrlQuery();

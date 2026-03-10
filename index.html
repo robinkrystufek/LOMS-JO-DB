@@ -164,6 +164,7 @@
                     <label for="filter-composition-text">Composition (text)</label>
                     <input id="filter-composition-text" class="jo-db-input" placeholder="e.g. 60SiO2-20Na2O-20CaO" />
                     <input id="filter-composition-element" value="" type="hidden" />
+                    <input id="filter-composition-mode" value="" type="hidden" />
                     <div class="jo-db-advanced-toggle" id="advanced-toggle">
                       Advanced composition filter…
                     </div>
@@ -242,7 +243,8 @@
                 </div>
               </div>
               <div class="jo-filters-right">
-                <label for="filters-render-slot">Periodic table</label>
+                <label for="filters-render-slot">Periodic table <i class="fa fa-question-circle tooltip-icon" data-tooltip="Click: single element. Shift+click: any selected elements. Ctrl+click: all selected elements.">
+                </i></label>
                 <div id="filters-render-slot" class="jo-filters-slot">
                 </div>
               </div>

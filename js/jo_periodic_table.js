@@ -108,7 +108,8 @@
     storeToWindow = true,
     compact = false,
     defaultDisable = false,
-    tileMode = "full" // "full" | "symbol"
+    tileMode = "full", // "full" | "symbol"
+    selectionBehavior = "toggle-single" // "toggle-single" | "filter-multi-mode"
   } = {}) {
     const cell = compact ? 36 : 44;
     const root = el("div", { style: `
@@ -143,6 +144,8 @@
       align-items:stretch;
     `});
     let highlightedSymbol = null;
+    const selectedSymbols = new Set();
+    let activePickMode = null; // null | "any" | "all" | "single"
     function setHighlightedSymbol(symbol) {
       highlightedSymbol = symbol ? symbol.trim().toLowerCase() : null;
       const buttons = root.querySelectorAll('button[data-s]');
@@ -150,11 +153,74 @@
         const s = btn.getAttribute("data-s").toLowerCase();
         if (highlightedSymbol && s === highlightedSymbol) {
           btn.classList.add("pt-highlight");
-        } 
+        }
         else {
           btn.classList.remove("pt-highlight");
         }
       });
+    }
+    function syncMultiSelectionUI() {
+      const buttons = root.querySelectorAll('button[data-s]');
+      buttons.forEach(btn => {
+        const s = btn.getAttribute("data-s");
+        btn.classList.toggle("pt-highlight", selectedSymbols.has(s));
+      });
+    }
+    function modeFromEvent(ev) {
+      if (ev.shiftKey) return "any";
+      if (ev.ctrlKey || ev.metaKey) return "all";
+      return "single";
+    }
+    function startModeIfNeeded(nextMode) {
+      if (activePickMode !== nextMode) {
+        if(activePickMode !== 'single') selectedSymbols.clear();
+        activePickMode = nextMode;
+      }
+    }
+    function syncFilterInputs() {
+      const elementInput = document.getElementById('filter-composition-element');
+      if (elementInput) elementInput.value = [...selectedSymbols].join(',');
+      const modeInput = document.getElementById('filter-composition-mode');
+      if (modeInput) modeInput.value = activePickMode === 'all' ? 'all' : 'any';
+    }
+    function updateMultiStatus() {
+      const picked = [...selectedSymbols];
+      if (!picked.length) {
+        status.textContent = "Click an element to select it.";
+        return;
+      }
+      const modeLabel = activePickMode === 'all' ? 'all' : 'any';
+      status.textContent = `Selected (${modeLabel}): ${picked.join(', ')}`;
+    }
+    function applyFilterMultiPick(ev, e) {
+      const clickMode = modeFromEvent(ev);
+      startModeIfNeeded(clickMode);
+    
+      if (clickMode === 'single') {
+        if (selectedSymbols.size === 1 && selectedSymbols.has(e.s)) {
+          selectedSymbols.clear();
+          activePickMode = null;
+        } else {
+          selectedSymbols.clear();
+          selectedSymbols.add(e.s);
+        }
+      } else {
+        selectedSymbols.add(e.s);
+      }
+    
+      const payload = {
+        atomicNumber: e.z,
+        symbol: [...selectedSymbols].join(','),
+        symbols: [...selectedSymbols],
+        lastSymbol: e.s,
+        mode: activePickMode ? (activePickMode === 'all' ? 'all' : 'any') : 'any',
+        name: e.n,
+      };
+      if (storeToWindow) window.__pickedElement = payload;
+      syncMultiSelectionUI();
+      syncFilterInputs();
+      updateMultiStatus();
+      if (typeof onPick === "function") onPick(payload);
     }
     function elementButton(e, disable = false) {
       const cat = categoryFor(e);
@@ -176,7 +242,11 @@
           user-select:none;
           ${CATEGORY_STYLE[cat] || CATEGORY_STYLE.unknown}
         `,
-        onclick: () => {
+        onclick: (ev) => {
+          if (selectionBehavior === "filter-multi-mode") {
+            applyFilterMultiPick(ev, e);
+            return;
+          }
           const picked = normalizePicked(e);
           if (storeToWindow) window.__pickedElement = picked;
           if(picked.symbol == "")  status.textContent = "Click an element to select it.";
@@ -317,10 +387,13 @@
       focusSearch: () => search.focus(),
       reset: () => {
         lastSymbol = "";
+        selectedSymbols.clear();
+        activePickMode = null;
         if (storeToWindow) {
           window.__pickedElement = { atomicNumber: 0, symbol: "", name: "" };
         }
         setHighlightedSymbol("");
+        syncFilterInputs();
         status.textContent = "Click an element to select it.";
       }
     };
@@ -398,11 +471,12 @@
       compact = false,
       tileMode = "full",
       defaultDisable = false,
+      selectionBehavior = "toggle-single",
     } = options;
     if (replace) {
       target.querySelectorAll(":scope > [data-periodic-table-root]").forEach(n => n.remove());
     }
-    const ui = createTableUI({ onPick, storeToWindow, compact, tileMode, defaultDisable });
+    const ui = createTableUI({ onPick, storeToWindow, compact, tileMode, defaultDisable, selectionBehavior });
     ui.root.setAttribute("data-periodic-table-root", "1");
     target.append(ui.root);
     return { ...ui, container: target, destroy: () => ui.root.remove() };
@@ -424,7 +498,14 @@ const table = renderPeriodicTable("#filters-render-slot", {
   compact: true,
   tileMode: "symbol",
   defaultDisable: true,
-  onPick: el => { document.getElementById('filter-composition-element').value = el.symbol; document.getElementById('btn-search').click(); }
+  selectionBehavior: "filter-multi-mode",
+  onPick: el => {
+    const elementInput = document.getElementById('filter-composition-element');
+    if (elementInput) elementInput.value = el.symbol;
+    const modeInput = document.getElementById('filter-composition-mode');
+    if (modeInput) modeInput.value = el.mode === 'all' ? 'all' : 'any';
+    document.getElementById('btn-search').click();
+  }
 });
 async function applyElementAvailabilityToTable(tableInstance) {
   try {
