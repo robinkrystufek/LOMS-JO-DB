@@ -1,0 +1,1 @@
+python scrub_timeline.py --base-url https://loms.cz/jo-db/api
