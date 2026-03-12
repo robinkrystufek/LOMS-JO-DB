@@ -8,12 +8,6 @@
  * Intended to be included by entry endpoints.
  */
 require 'composition.inc.php';
-$contributor_info  = $userInfo['user_id']; 
-$contributor_email = $userInfo['email'];
-$contributor_name  = $userInfo['name'];
-$contributor_aff   = isset($userInfo['picture']) ? explode(';', $userInfo['picture'])[0] : null;
-$contributor_orcid = isset($userInfo['picture']) ? (explode(';', $userInfo['picture'] ?? '', 2)[1] ?? null) : null;
-if ($contributor_info === null) json_fail('Contributor info is required: Authentication error');
 
 function normalize_utf8(string $s): string {
   $s = preg_replace('/^\xEF\xBB\xBF/', '', $s);
@@ -756,4 +750,19 @@ function backfill_composition_storage(PDO $pdo, int $windowSeconds = 600, int $l
     'fail' => $fail,
     'results' => $results,
   ];
+}
+function jo_db_connect(string $DB_HOST, string $DB_USER, string $DB_PASS, string $DB_NAME, string $DB_CHARSET): PDO {
+  $dsn = "mysql:host={$DB_HOST};dbname={$DB_NAME};charset={$DB_CHARSET}";
+  $options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+  ];
+  try {
+    $pdo = new PDO($dsn, $DB_USER, $DB_PASS, $options);
+  } 
+  catch (Throwable $e) {
+    json_fail('Database connection failed.', 500);
+  }
+  return $pdo;
 }

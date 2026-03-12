@@ -126,4 +126,51 @@ function json_fail($msg, int $http = 400): void {
   echo $json;
   exit;
 }
-$userInfo = require_firebase_user();
+function require_depositor_role(string $uid, PDO $pdo): void {
+  try {
+    $st = $pdo->prepare("SELECT role FROM jo_contributors WHERE uid = :uid");
+    $st->execute([':uid' => $uid]);
+    $row = $st->fetch();
+    if (is_array($row) && isset($row['role']) && in_array($row['role'], ['depositor', 'reviewer', 'admin'], true)) {
+      return;
+    }
+    json_fail(['error' => 'Insufficient permissions', 'details' => 'User lacks the depositor role or higher'], 403);
+  } 
+  catch (Exception $e) {
+    json_fail(['error' => 'Database error', 'details' => $e->getMessage()], 500);
+  }
+}
+function update_user_info(PDO $pdo, array $userInfo): array {
+  $contributor_aff   = isset($userInfo['picture']) ? explode(';', $userInfo['picture'])[0] : null;
+  $contributor_orcid = isset($userInfo['picture']) ? (explode(';', $userInfo['picture'] ?? '', 2)[1] ?? null) : null;
+  if ($userInfo['user_id'] === null) json_fail('Contributor info is required: Authentication error');
+  try {
+    $sql = "
+      INSERT INTO jo_contributors (uid, email, name, affiliation, orcid)
+      VALUES (:uid, :email, :name, :affiliation, :orcid)
+      ON DUPLICATE KEY UPDATE
+        email = VALUES(email),
+        name = VALUES(name),
+        affiliation = VALUES(affiliation),
+        orcid = VALUES(orcid)
+    ";
+    $stmtC = $pdo->prepare($sql);
+    $stmtC->execute([
+      ':uid' => $userInfo['user_id'],
+      ':email' => $userInfo['email'],
+      ':name' => $userInfo['name'] ?? null,
+      ':affiliation' => $contributor_aff,
+      ':orcid' => $contributor_orcid,
+    ]);
+  }
+  catch (Exception $e) {
+    json_fail(['error' => 'Database error', 'details' => $e->getMessage()], 500);
+  }
+  return [
+      $userInfo['user_id'],
+      $userInfo['email'],
+      $userInfo['name'] ?? null,
+      $contributor_aff ?: null,
+      $contributor_orcid ?: null,
+  ];
+}

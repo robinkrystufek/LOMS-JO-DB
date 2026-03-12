@@ -33,8 +33,19 @@ if ((int)($fEntry['size'] ?? 0) > $MAX_UPLOAD_BYTES) {
 }
 $entryText = file_get_contents($fEntry['tmp_name']);
 if ($entryText === false) json_fail('Failed to read entry file.', 500);
-$kv = parse_kv_file($entryText);
 
+$userInfo = require_firebase_user();
+$pdo = jo_db_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_CHARSET);
+[
+  $contributor_info,
+  $contributor_email,
+  $contributor_name,
+  $contributor_aff,
+  $contributor_orcid
+] = update_user_info($pdo, $userInfo);
+require_depositor_role($contributor_info, $pdo);
+
+$kv = parse_kv_file($entryText);
 
 $is_contributor_author = bool01(as_trimmed(kv_get_first($kv, 'is_contributor_author')));
 
@@ -129,40 +140,10 @@ for ($i = 0; $i < $tripN; $i++) {
   if (!in_array($u, ['mol%','wt%','at%'], true)) continue;
   $compRows[] = ['component' => $c, 'value' => $v, 'unit' => $u];
 }
-$dsn = "mysql:host={$DB_HOST};dbname={$DB_NAME};charset={$DB_CHARSET}";
-$options = [
-  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  PDO::ATTR_EMULATE_PREPARES   => false,
-];
-try {
-  $pdo = new PDO($dsn, $DB_USER, $DB_PASS, $options);
-} 
-catch (Throwable $e) {
-  json_fail('Database connection failed.', 500);
-}
+
 
 try {
   $pdo->beginTransaction();
-  if ($contributor_email !== null) {
-    $sql = "
-      INSERT INTO jo_contributors (uid, email, name, affiliation, orcid)
-      VALUES (:uid, :email, :name, :affiliation, :orcid)
-      ON DUPLICATE KEY UPDATE
-        email = VALUES(email),
-        name = VALUES(name),
-        affiliation = VALUES(affiliation),
-        orcid = VALUES(orcid)
-    ";
-    $stmtC = $pdo->prepare($sql);
-    $stmtC->execute([
-      ':uid' => $contributor_info,
-      ':email' => $contributor_email,
-      ':name' => $contributor_name,
-      ':affiliation' => $contributor_aff,
-      ':orcid' => $contributor_orcid,
-    ]);
-  }
   $publication_id = null;
   if ($doi !== null) {
     $stmt = $pdo->prepare("SELECT id FROM jo_publications WHERE doi = :doi LIMIT 1");
