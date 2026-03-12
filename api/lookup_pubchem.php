@@ -37,7 +37,7 @@ $forceRefresh = isset($_GET['cache_refresh']) && $_GET['cache_refresh'] == '1';
 $checkOnly = isset($_GET['check']) && $_GET['check'] == '1';
 
 function jo_components_select_by_ui_name(PDO $pdo, string $uiName): ?array {
-  $sql = "SELECT * FROM jo_components WHERE ui_name = :q LIMIT 1";
+  $sql = "SELECT * FROM jo_components WHERE ui_name COLLATE utf8mb4_bin = :q LIMIT 1";
   $st = $pdo->prepare($sql);
   $st->execute([':q' => $uiName]);
   $row = $st->fetch();
@@ -79,7 +79,7 @@ function jo_components_update_from_out(PDO $pdo, string $uiName, array $out, arr
               mw = :mw,
               atom_number = :atoms,
               composition = :comp
-            WHERE ui_name = :q";
+            WHERE ui_name COLLATE utf8mb4_bin = :q";
     $st = $pdo->prepare($sql);
     $st->bindValue(':cid', $cid, $cid === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $st->bindValue(':pname', $name, $name === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
@@ -90,7 +90,7 @@ function jo_components_update_from_out(PDO $pdo, string $uiName, array $out, arr
     $st->bindValue(':q', $uiName, PDO::PARAM_STR);
     $st->execute();
   }
-  $idStmt = $pdo->prepare("SELECT id FROM jo_components WHERE ui_name = :q LIMIT 1");
+  $idStmt = $pdo->prepare("SELECT id FROM jo_components WHERE ui_name COLLATE utf8mb4_bin = :q LIMIT 1");
   $idStmt->bindValue(':q', $uiName, PDO::PARAM_STR);
   $idStmt->execute();
   $id = $idStmt->fetchColumn();
@@ -416,10 +416,6 @@ $__jo_cache_ui = $raw;
 if ($__jo_pdo) {
   try {
     $row = jo_components_select_by_ui_name($__jo_pdo, $__jo_cache_ui);
-    if (!$row && $norm !== $raw) {
-      $row = jo_components_select_by_ui_name($__jo_pdo, $norm);
-      if ($row) $__jo_cache_ui = $norm;
-    }
     if ($row) {
       if (isset($row['pubchem_details']) && $row['pubchem_details'] !== null && $row['pubchem_details'] !== '' && !$forceRefresh) {
         $cached = json_decode((string)$row['pubchem_details'], true);

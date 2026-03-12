@@ -415,7 +415,7 @@ function fetch_component_details($compRows, ?PDO $pdo = null) {
     $st = $pdo->prepare("
       SELECT id, ui_name, mw, atom_number, composition
       FROM jo_components
-      WHERE ui_name IN ($ph)
+      WHERE ui_name COLLATE utf8mb4_bin IN ($ph)
     ");
     $st->execute($names);
     while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
