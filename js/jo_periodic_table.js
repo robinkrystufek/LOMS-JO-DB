@@ -1,6 +1,8 @@
 (() => {
   if (window.pickElement && window.renderPeriodicTable && window.__periodicPickerInjected) return;
   window.__periodicPickerInjected = true;
+  const statusDefault = "Click (+Shift/Ctrl) to select element(s)";
+  const statusDefaultOverlay = "Click to select element";
   const ELEMENTS = [
     {z:1,s:"H",n:"Hydrogen",g:1,p:1,c:"nonmetal"},{z:2,s:"He",n:"Helium",g:18,p:1,c:"noble"},
     {z:3,s:"Li",n:"Lithium",g:1,p:2,c:"alkali"},{z:4,s:"Be",n:"Beryllium",g:2,p:2,c:"alkaline"},
@@ -134,7 +136,8 @@
       background:#fafafa;
       flex:1;
       min-width:260px;
-    `}, "Click an element to select it.");
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    `}, selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay);
     header.append(title, search, status);
     const grid = el("div", { style: `
       display:grid;
@@ -187,7 +190,7 @@
     function updateMultiStatus() {
       const picked = [...selectedSymbols];
       if (!picked.length) {
-        status.textContent = "Click an element to select it.";
+        status.textContent = selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay;
         return;
       }
       const modeLabel = picked.length == 1 ? '' : (activePickMode === 'all' ? ' (all)' : ' (any)');
@@ -250,18 +253,18 @@
           }
           const picked = normalizePicked(e);
           if (storeToWindow) window.__pickedElement = picked;
-          if(picked.symbol == "")  status.textContent = "Click an element to select it.";
+          if(picked.symbol == "")  status.textContent = selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay;
           else status.textContent = `Selected: ${picked.name} (${picked.symbol}), Z=${picked.atomicNumber}`;
           setHighlightedSymbol(picked.symbol)
           if (typeof onPick === "function") onPick(picked);
         }
       });
       btn.addEventListener("mouseenter", () => { 
-        if(e.s == "" && ![...selectedSymbols].length) status.textContent = "Click an element to select it.";
+        if(e.s == "" && ![...selectedSymbols].length) status.textContent = selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay;
         else status.textContent = `${e.n} (${e.s}), Z=${e.z}`; 
       });
       btn.addEventListener("mouseleave", () => { 
-        if(![...selectedSymbols].length) status.textContent = "Click an element to select it."; 
+        if(![...selectedSymbols].length) status.textContent = selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay; 
         else {
           const modeLabel = activePickMode && selectedSymbols.size > 1 ? (activePickMode === 'all' ? ' (all)' : ' (any)') : '';
           status.textContent = `Selected${modeLabel}: ${[...selectedSymbols].join(', ')}`;
@@ -401,7 +404,7 @@
         }
         setHighlightedSymbol("");
         syncFilterInputs();
-        status.textContent = "Click an element to select it.";
+        status.textContent = selectionBehavior == "filter-multi-mode" ? statusDefault : statusDefaultOverlay;
       }
     };
   }
