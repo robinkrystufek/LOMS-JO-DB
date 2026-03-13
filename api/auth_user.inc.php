@@ -112,6 +112,19 @@ function require_firebase_user(): array {
   if (!$uid) json_fail(['error' => 'Token missing uid'], 401);
   return $claims;
 }
+function get_firebase_user(): ?array {
+  $idToken = get_bearer_token();
+  if (!$idToken) return null;
+  try {
+    $claims = verify_firebase_id_token($idToken, FIREBASE_PROJECT_ID);
+  } 
+  catch (Throwable $e) {
+    return null;
+  }
+  $uid = $claims['user_id'] ?? $claims['sub'] ?? null;
+  if (!$uid) return null;
+  return $claims;
+}
 function json_fail($msg, int $http = 400): void {
   if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
   http_response_code($http);
@@ -127,18 +140,28 @@ function json_fail($msg, int $http = 400): void {
   exit;
 }
 function require_depositor_role(string $uid, PDO $pdo): void {
+  $role = get_user_role($uid, $pdo);
+  if ($role && in_array($role, ['depositor', 'reviewer', 'admin'], true)) {
+    return;
+  }
+  json_fail(['error' => 'Insufficient permissions', 'details' => 'User lacks the depositor role or higher'], 403);
+}
+function get_user_role(string $uid, PDO $pdo): ?string {
   try {
     $st = $pdo->prepare("SELECT role FROM jo_contributors WHERE uid = :uid");
     $st->execute([':uid' => $uid]);
     $row = $st->fetch();
-    if (is_array($row) && isset($row['role']) && in_array($row['role'], ['depositor', 'reviewer', 'admin'], true)) {
-      return;
+    if (is_array($row) && isset($row['role'])) {
+      return (string)$row['role'];
     }
-    json_fail(['error' => 'Insufficient permissions', 'details' => 'User lacks the depositor role or higher'], 403);
+    else {
+      return "user_unregistered";
+    }
   } 
   catch (Exception $e) {
     json_fail(['error' => 'Database error', 'details' => $e->getMessage()], 500);
   }
+  return null;
 }
 function update_user_info(PDO $pdo, array $userInfo): array {
   $contributor_aff   = isset($userInfo['picture']) ? explode(';', $userInfo['picture'])[0] : null;

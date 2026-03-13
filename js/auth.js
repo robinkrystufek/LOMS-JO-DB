@@ -1,10 +1,48 @@
 var userLoggedIn = false;
-function updateAddTabLock(userLoggedIn) {
+var userRole = null;
+async function updateAccessPermissions() {
+  const buttons = document.querySelectorAll('.jo-request-revision');
   const addTab = document.getElementById('tab-add-btn');
-  if (!addTab) return;
-  if (!userLoggedIn) {
+  if (!buttons.length || !addTab) return;
+  if(userRole === null && userLoggedIn) {
+    try {
+      const user = firebase.auth().currentUser;
+      const token = await user?.getIdToken(true);
+      const resp = await fetch('api/auth_permissions.php', {
+        method: 'POST',
+        headers: {
+        "Authorization": `Bearer ${token}`
+        }
+      });
+      const text = await resp.text();
+      let data = JSON.parse(text);
+      if (resp.ok && data && data.ok && data.role && data.uid == user.uid) {
+        userRole = data.role;
+      }
+      else {
+        userRole = null;
+      }
+    } 
+    catch (err) {
+      console.error("Error fetching user permissions:", err);
+      userRole = null;
+    }
+  }
+  buttons.forEach(btn => {
+    if (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
+      btn.disabled = true;
+      btn.classList.add('locked', 'tooltip-icon');
+      btn.dataset.tooltip = "You need to be registered as depositor to use this feature";
+    } 
+    else {
+      btn.disabled = false;
+      btn.classList.remove('locked', 'tooltip-icon');
+      btn.removeAttribute('data-tooltip');
+    }
+  });
+  if (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
     addTab.classList.add('locked');
-    addTab.dataset.tooltip = "You need to be registered to use this feature";
+    addTab.dataset.tooltip = "You need to be registered as depositor to use this feature";
     if (!addTab.querySelector('i')) {
       const icon = document.createElement('i');
       icon.className = 'bx bx-lock-alt';
@@ -16,23 +54,7 @@ function updateAddTabLock(userLoggedIn) {
     addTab.removeAttribute('data-tooltip');
     const icon = addTab.querySelector('i');
     if (icon) icon.remove();
-  }
-}
-function updateRevisionButtonsLock(userLoggedIn) {
-  const buttons = document.querySelectorAll('.jo-request-revision');
-  if (!buttons.length) return;
-  buttons.forEach(btn => {
-    if (!userLoggedIn) {
-      btn.disabled = true;
-      btn.classList.add('locked', 'tooltip-icon');
-      btn.dataset.tooltip = "You need to be registered to use this feature";
-    } 
-    else {
-      btn.disabled = false;
-      btn.classList.remove('locked', 'tooltip-icon');
-      btn.removeAttribute('data-tooltip');
-    }
-  });
+  }  
 }
 function toggleSignIn() {
   if (firebase.auth().currentUser) {
@@ -333,8 +355,7 @@ function initApp() {
 }
 function initUserInfo() {
   const user = firebase.auth().currentUser;
-  updateAddTabLock(user);
-  updateRevisionButtonsLock(user);
+  updateAccessPermissions();
   const setVal = (id, v) => {
     const el = document.getElementById(id);
     if (el) el.value = v;

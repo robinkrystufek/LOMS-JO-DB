@@ -614,6 +614,7 @@ async function load(page) {
   render(data.items || []);
   renderPager(data.page, data.total_pages, data.total);
   bindSortHeaders();
+  updateAccessPermissions();
 }
 function resetSearchInput(reload = true) {
   window.resetPeriodicTable();
