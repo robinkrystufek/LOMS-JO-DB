@@ -190,8 +190,8 @@
         status.textContent = "Click an element to select it.";
         return;
       }
-      const modeLabel = activePickMode === 'all' ? 'all' : 'any';
-      status.textContent = `Selected (${modeLabel}): ${picked.join(', ')}`;
+      const modeLabel = picked.length == 1 ? '' : (activePickMode === 'all' ? ' (all)' : ' (any)');
+      status.textContent = `Selected${modeLabel}: ${picked.join(', ')}`;
     }
     function applyFilterMultiPick(ev, e) {
       const clickMode = modeFromEvent(ev);
@@ -257,10 +257,16 @@
         }
       });
       btn.addEventListener("mouseenter", () => { 
-        if(e.s == "") status.textContent = "Click an element to select it.";
+        if(e.s == "" && ![...selectedSymbols].length) status.textContent = "Click an element to select it.";
         else status.textContent = `${e.n} (${e.s}), Z=${e.z}`; 
       });
-      btn.addEventListener("mouseleave", () => { status.textContent = "Click an element to select it."; });
+      btn.addEventListener("mouseleave", () => { 
+        if(![...selectedSymbols].length) status.textContent = "Click an element to select it."; 
+        else {
+          const modeLabel = activePickMode && selectedSymbols.size > 1 ? (activePickMode === 'all' ? ' (all)' : ' (any)') : '';
+          status.textContent = `Selected${modeLabel}: ${[...selectedSymbols].join(', ')}`;
+        }
+      });
       if (tileMode === "symbol") {
         const H = compact ? 31 : 38;
         btn.style.height = H + "px";
