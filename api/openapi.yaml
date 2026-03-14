@@ -11,6 +11,8 @@ info:
 
     - [Render publication timeline with plotly](https://www.loms.cz/jo-db/demo/rest_scrub_timeline.py)
 
+    - [Render database elemental breakdown with matplotlib](https://www.loms.cz/jo-db/demo/rest_scrub_elements.py)
+
     - [Search DOI records in a Google Sheet with Apps Script](https://www.loms.cz/jo-db/demo/rest_gs_test_db_doi.gs)
 servers:
   - url: https://www.loms.cz/jo-db/api/rest

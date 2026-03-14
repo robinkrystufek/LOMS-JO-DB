@@ -1,0 +1,1 @@
+python rest_scrub_elements.py
