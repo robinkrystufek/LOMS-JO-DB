@@ -68,7 +68,8 @@ CREATE TABLE `jo_contributors` (
   `email` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci,
   `name` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci,
   `affiliation` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci,
-  `orcid` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci
+  `orcid` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci,
+  `role` enum('admin','reviewer','depositor','user') COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT 'user'
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 ALTER TABLE `jo_contributors`
   ADD UNIQUE KEY `uid` (`uid`);

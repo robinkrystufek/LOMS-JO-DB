@@ -1,5 +1,22 @@
 var userLoggedIn = false;
 var userRole = null;
+function getInitials(name, fallback = 'A') {
+  const cleaned = (name || '').trim();
+  if (!cleaned) return fallback;
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+function updateLoginIdentity(name, email) {
+  const labelEl = document.getElementById('login-info-user');
+  const triggerAvatarEl = document.getElementById('login-info-avatar');
+  const cardAvatarEl = document.getElementById('loggedin-area-avatar');
+  const label = (name || email || 'Anonymous user').trim();
+  if (labelEl) labelEl.textContent = label;
+  const initials = getInitials(name || email || 'Anonymous user', 'A');
+  if (triggerAvatarEl) triggerAvatarEl.textContent = initials;
+  if (cardAvatarEl) cardAvatarEl.textContent = initials;
+}
 async function updateAccessPermissions() {
   const buttons = document.querySelectorAll('.jo-request-revision');
   const addTab = document.getElementById('tab-add-btn');
@@ -28,6 +45,10 @@ async function updateAccessPermissions() {
       userRole = null;
     }
   }
+  document.getElementById('loggedin-area-role').textContent =
+  typeof userRole === 'string' && userRole.length
+    ? userRole[0].toUpperCase() + userRole.slice(1)
+    : 'User';
   buttons.forEach(btn => {
     if (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
       btn.disabled = true;
@@ -99,7 +120,7 @@ function handleSignUp() {
   var uname = document.getElementById('displayname').value;
   var orcidreg = document.getElementById('displayorcid').value;
   if(uaffiliation == "" && uname == "") {
-    document.getElementById('userinfoextended').style.display = 'block';
+    document.getElementById('userinfoextended').style.display = 'flex';
     policyAgreementChange();
     return;
   }
@@ -117,11 +138,10 @@ function handleSignUp() {
       displayName: uname,
       photoURL: uaffiliation+";"+orcidreg
     }).then(() => {
-      console.log("Updated user info: " + uname + " " + uaffiliation)
       document.getElementById('displayaffiliation').value = ""
       document.getElementById('displayname').value = ""
     }).catch((error) => {
-      console.log("Error updating user info: " + uname + " " + uaffiliation)
+      console.log(`Error updating user info: ${uname} ${uaffiliation} ${orcidreg} ${error}`);
     });
     user.user.sendEmailVerification()  
     firebase.auth().signOut();
@@ -139,20 +159,52 @@ function handleSignUp() {
     console.log(error);
   });
 }
-function sendPasswordReset() {
-  var email = document.getElementById('email').value;
+function sendPasswordResetFromLogin() {
+  sendPasswordReset(true);
+}
+function sendPasswordResetFromEdit() {
+  sendPasswordReset(false);
+}
+function statusUpdate(statusElement, message = '', isError = false) {
+  if(!statusElement) return;
+  statusElement.classList.remove('show');
+  void statusElement.offsetWidth;
+  statusElement.textContent = '';
+  statusElement.classList.add('show');
+  statusElement.classList.remove('is-error');
+  statusElement.textContent = message;
+  if (isError) statusElement.classList.add('is-error');
+  else statusElement.classList.remove('is-error');
+}
+function sendPasswordReset($requestedFromLoginWidget = true) {
+  var email = $requestedFromLoginWidget ? document.getElementById('email').value : document.getElementById('loggedin-area-email').textContent;
+  var status = $requestedFromLoginWidget ? document.getElementById('login-notice') : document.getElementById('profile-status');
+
+
   firebase.auth().sendPasswordResetEmail(email).then(function() {
-    alert('Password Reset Email Sent!');
+    if(!$requestedFromLoginWidget) {
+      document.getElementById('loggedin-area-edit').style.display = 'none';
+      document.getElementById('loggedin-area').style.display = 'block';
+      document.getElementById('login-signup-area').style.display = 'none';
+    }
+    statusUpdate(status, 'Recovery email sent', false);
   }).catch(function(error) {
     var errorCode = error.code;
-    var errorMessage = error.message;
-    if (errorCode == 'auth/invalid-email') {
-      alert(errorMessage);
-    } 
-    else if (errorCode == 'auth/user-not-found') {
-      alert(errorMessage);
-    }
     console.log(error);
+    if(!$requestedFromLoginWidget) {
+      document.getElementById('loggedin-area-edit').style.display = 'none';
+      document.getElementById('loggedin-area').style.display = 'block';
+      document.getElementById('login-signup-area').style.display = 'none';
+      statusUpdate(status, 'Error sending recovery email', true);
+    }
+    else {
+      if (errorCode == 'auth/invalid-email' || errorCode == 'auth/user-not-found') {
+        statusUpdate(status, 'User not found', true);
+      } 
+      else {
+        statusUpdate(status, 'Error sending recovery email', true);
+      }
+    }
   });
 }
 function deleteAccount() {
@@ -165,33 +217,19 @@ function deleteAccount() {
     document.getElementById('loggedin-area').style.display = 'block';
     document.getElementById('login-signup-area').style.display = 'none';
     userLoggedIn = false;
-    document.getElementById('login-info-user').textContent = "Anonymous user";
+    updateLoginIdentity('', '');
     document.getElementById('login-widget-sign-up').disabled = false;
     document.getElementById('login-widget-sign-in').textContent = 'Sign in';
     document.getElementById('login-signup-area').style.display = 'block';
     document.getElementById('loggedin-area').style.display = 'none';
+    document.getElementById('loggedin-area-edit').style.display = 'none';
     document.getElementById('loggedin-area-name').textContent = "";
     document.getElementById('loggedin-area-email').textContent = "";
     document.getElementById('loggedin-area-affiliation').textContent = "";
+    document.getElementById('loggedin-area-orcid').textContent = "";
   }).catch(function(error) {
     console.log(error);
     alert('Error deleting account.');
-  });
-}
-function sendPasswordReset2() {
-  var email = document.getElementById('loggedin-area-email').textContent;
-  firebase.auth().sendPasswordResetEmail(email).then(function() {
-    alert('Password Reset Email Sent!');
-  }).catch(function(error) {
-    var errorCode = error.code;
-    var errorMessage = error.message;
-    if (errorCode == 'auth/invalid-email') {
-      alert(errorMessage);
-    } 
-    else if (errorCode == 'auth/user-not-found') {
-      alert(errorMessage);
-    }
-    console.log(error);
   });
 }
 function editProfileShow() {
@@ -205,25 +243,31 @@ function editProfileShow() {
   document.getElementById('login-signup-area').style.display = 'none';
 }
 function editProfileSave() {
-  uname = document.getElementById('displaynameedit').value;
-  uaffiliation = document.getElementById('displayaffiliationedit').value.replace(";","");
-  orcid = document.getElementById('displayorcidedit').value;
+  const saveBtn = document.getElementById('login-widget-change-profile-save');
+  const saveStatus = document.getElementById('profile-status');
+  const uname = document.getElementById('displaynameedit').value;
+  const uaffiliation = document.getElementById('displayaffiliationedit').value.replace(/;/g, '');
+  const orcid = document.getElementById('displayorcidedit').value;
+  saveBtn.classList.add('is-loading');
+  saveBtn.disabled = true;
   firebase.auth().currentUser.updateProfile({
     displayName: uname,
     photoURL: uaffiliation + ";" + orcid
   }).then(() => {
-    console.log("Updated user info: " + uname + " " + uaffiliation)
     document.getElementById('loggedin-area-name').textContent = uname;
     document.getElementById('loggedin-area-affiliation').textContent = uaffiliation;
     document.getElementById('loggedin-area-orcid').textContent = orcid;
     document.getElementById('loggedin-area-edit').style.display = 'none';
     document.getElementById('loggedin-area').style.display = 'block';
     document.getElementById('login-signup-area').style.display = 'none';
-    alert("Update successful");
+    statusUpdate(saveStatus, 'Profile updated', false);
     initUserInfo();
   }).catch((error) => {
-    console.log("Error updating user info: " + uname + " " + uaffiliation);
-    alert("Error updating user info: " + uname + " " + uaffiliation);
+    console.log(`Error updating user info: ${uname} ${uaffiliation}`, error);
+    statusUpdate(saveStatus, 'Failed to update profile', true);
+  }).finally(() => {
+    saveBtn.classList.remove('is-loading');
+    saveBtn.disabled = false;
   });
 }
 function orcidEditChange() {
@@ -257,10 +301,7 @@ function fetchXMLFromURL(url) {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xml, "text/xml");
       const expandedSearchElement = xmlDoc.getElementsByTagName('expanded-search:expanded-search');
-      console.log(xml);
-      console.log(expandedSearchElement);
       if (expandedSearchElement && parseInt(expandedSearchElement[0].getAttribute('num-found')) > 0) {
-        console.log("num-found is greater than 0");
         document.getElementById('displaynameedit').value = expandedSearchElement[0].getElementsByTagName('expanded-search:given-names')[0].textContent + " " + expandedSearchElement[0].getElementsByTagName('expanded-search:family-names')[0].textContent;
         document.getElementById('displayaffiliationedit').value = expandedSearchElement[0].getElementsByTagName('expanded-search:institution-name')[expandedSearchElement[0].getElementsByTagName('expanded-search:institution-name').length-1].textContent;
         document.getElementById('displayaffiliationedit').disabled = true;
@@ -271,7 +312,6 @@ function fetchXMLFromURL(url) {
         document.getElementById('displayname').disabled = true;
       } 
       else {
-        console.log("num-found is not greater than 0");
         document.getElementById('displayaffiliationedit').disabled = false;
         document.getElementById('displaynameedit').disabled = false;
         document.getElementById('displayaffiliation').disabled = false;
@@ -300,7 +340,7 @@ function initApp() {
     if (user) {
       var emailVerified = user.emailVerified;
       if (!emailVerified) {
-        document.getElementById('login-notice').textContent = "Check inbox for activation link";
+        statusUpdate(document.getElementById('login-notice'), 'Check inbox for activation link', false);
         document.getElementById('login-widget-password-reset').textContent = "";
         setTimeout(() => {
           document.getElementById('login-notice').textContent = "";
@@ -322,7 +362,7 @@ function initApp() {
         document.getElementById('loggedin-area-orcid').textContent = photoURL.split(";")[1];
       }
       document.getElementById('login-notice').textContent = "";
-      document.getElementById('login-info-user').textContent = email;
+      updateLoginIdentity(displayName, email);
       document.getElementById('login-widget-sign-up').disabled = true;
       document.getElementById('login-widget-sign-in').textContent = 'Sign out';
       initUserInfo();
@@ -330,22 +370,24 @@ function initApp() {
     else {
       initUserInfo(false);
       userLoggedIn = false;
-      document.getElementById('login-info-user').textContent = "Anonymous user";
+      updateLoginIdentity('', '');
       document.getElementById('login-widget-sign-up').disabled = false;
       document.getElementById('login-widget-sign-in').textContent = 'Sign in';
       document.getElementById('login-signup-area').style.display = 'block';
       document.getElementById('loggedin-area').style.display = 'none';
+      document.getElementById('loggedin-area-edit').style.display = 'none';
       document.getElementById('loggedin-area-name').textContent = "";
       document.getElementById('loggedin-area-email').textContent = "";
       document.getElementById('loggedin-area-affiliation').textContent = "";
+      document.getElementById('loggedin-area-orcid').textContent = "";
     }
     document.getElementById('login-widget-sign-in').disabled = false;
   });
   document.getElementById('login-widget-sign-out').addEventListener('click', toggleSignIn, false);
   document.getElementById('login-widget-sign-in').addEventListener('click', toggleSignIn, false);
   document.getElementById('login-widget-sign-up').addEventListener('click', handleSignUp, false);
-  document.getElementById('login-widget-password-reset').addEventListener('click', sendPasswordReset, false);
-  document.getElementById('login-widget-reset-pass2').addEventListener('click', sendPasswordReset2, false);
+  document.getElementById('login-widget-password-reset').addEventListener('click', sendPasswordResetFromLogin, false);
+  document.getElementById('login-widget-reset-pass2').addEventListener('click', sendPasswordResetFromEdit, false);
   document.getElementById('login-widget-change-profile').addEventListener('click', editProfileShow, false);
   document.getElementById('login-widget-change-profile-save').addEventListener('click', editProfileSave, false);
   document.getElementById('displayorcidedit').addEventListener('change', orcidEditChange, false);

@@ -60,59 +60,81 @@
           </ul>
         </div>
         <div class="login-box">
-          <li style="list-style-type: none"><span id="login-info-user" style="color: #fff;"></span><i class="bx bx-user" style="line-height: 20px;"></i></li>
+          <button type="button" class="login-trigger" aria-label="Account menu">
+            <span class="login-trigger-avatar" id="login-info-avatar">A</span>
+            <span class="login-trigger-text" id="login-info-user">Anonymous user</span>
+            <i class="bx bx-chevron-down login-trigger-caret"></i>
+          </button>
           <div class="input-box">
-            <div id="login-signup-area">
-              <input style="display:block;width:auto;" type="text" id="email" name="email" placeholder="Email" />
-              <br/>
-              <input style="display:block;width:auto;" type="password" id="password" name="password" placeholder="Password" />
-              <br/>
-              <div id="userinfoextended" style="display:none;">
-                <input style="display:block;width:auto;" type="text" id="displayorcid" name="displayorcid" placeholder="ORCID" />
-                <br/>
-                <input style="display:block;width:auto;" type="text" id="displayname" name="displayname" placeholder="Name" />
-                <br/>
-                <input style="display:block;width:auto;" type="text" id="displayaffiliation" name="displayaffiliation" placeholder="Affiliation" />
-                <br/>
-                <div style="display:table-row;">
-                  <span style="display:table-cell; vertical-align:middle;">
-                    <input style="margin-left: -90px; margin-right: -110px;" type="checkbox" id="policyagreement" name="policyagreement" />
-                  </span>
-                  <label for="policyagreement" style="display:table-cell; width: 190px;">I agree to the <a href="https://www.loms.cz/privacy-policy/" style="color:#fff;">privacy policy</a>.</label>
-                </div>
-                <br/>
+            <div id="login-signup-area" class="login-panel-section">
+              <div class="login-panel-header">
+                <div class="login-panel-title">Sign in</div>
+                <div class="login-panel-subtitle">Access your LOMS contributor account.</div>
               </div>
-              <div style="margin-left:33px;">
-                <button disabled class="login-box-button" id="login-widget-sign-in" name="signin" style="margin-bottom:10px;">Sign In</button>
-                &nbsp;&nbsp;&nbsp;
-                <button disabled class="login-box-button" id="login-widget-sign-up" name="signup" style="margin-bottom:10px;">Sign Up</button>
-                <br/>
+              <div class="login-form-grid">
+                <input type="text" id="email" name="email" placeholder="Email" />
+                <input type="password" id="password" name="password" placeholder="Password" />
+              </div>
+              <div id="userinfoextended" class="login-form-grid" style="display:none;">
+                <input type="text" id="displayorcid" name="displayorcid" placeholder="ORCID" />
+                <input type="text" id="displayname" name="displayname" placeholder="Name" />
+                <input type="text" id="displayaffiliation" name="displayaffiliation" placeholder="Affiliation" />
+                <label for="policyagreement" class="login-policy-row">
+                  <input type="checkbox" id="policyagreement" name="policyagreement" />
+                  <span>I agree to the <a href="https://www.loms.cz/privacy-policy/">privacy policy</a>.</span>
+                </label>
+              </div>
+              <div class="login-actions-row login-actions-row-split" style="margin-bottom: 8px !important;">
+                <button disabled class="login-box-button login-box-button-primary" id="login-widget-sign-in" name="signin">Sign in</button>
+                <button disabled class="login-box-button login-box-button-secondary" id="login-widget-sign-up" name="signup">Sign up</button>
+              </div>
+              <div class="login-panel-footer">
                 <span id="login-notice"></span>
                 <a href="#" id="login-widget-password-reset">Reset password</a>
               </div>
             </div>
-            <div id="loggedin-area" style="margin-left:33px; display: none; color: #fff;">
-              <span id="loggedin-area-name" style="font-weight: bold;"></span>
-              <br/><br/>
-              <span id="loggedin-area-email"></span>
-              <br/><br/>
-              <span id="loggedin-area-affiliation" style="font-style: italic;"></span>
-              <br/><br/>
-              <span id="loggedin-area-orcid"></span>
-              <br/><br/>
-              <button class="login-box-button" id="login-widget-sign-out" name="signout" style="margin-bottom:10px;">Sign Out</button>&nbsp;&nbsp;&nbsp;
-              <button class="login-box-button" id="login-widget-change-profile" name="change-profile" style="margin-bottom:10px;">Edit profile</button>
+            <div id="loggedin-area" class="login-panel-section login-account-card" style="display: none;">
+              <div class="login-account-header">
+                <div class="login-account-avatar" id="loggedin-area-avatar">RK</div>
+                <div class="login-account-meta">
+                  <span id="loggedin-area-name" class="login-account-name"></span>
+                  <span id="loggedin-area-email" class="login-account-email"></span>
+                </div>
+                <div id="profile-status" class="profile-status"></div>
+              </div>
+              <div class="login-account-details">
+                <span id="loggedin-area-affiliation" class="login-account-affiliation"></span>
+                <span id="loggedin-area-orcid" class="login-account-orcid"></span>
+                <span id="loggedin-area-role" class="login-account-role"></span>
+              </div>
+              <div class="login-actions-row login-actions-row-split">
+                <button class="login-box-button login-box-button-secondary" id="login-widget-sign-out" name="signout">Sign out</button>
+                <button class="login-box-button login-box-button-primary" id="login-widget-change-profile" name="change-profile">Edit profile</button>
+              </div>
             </div>
-            <div id="loggedin-area-edit" style=" display: none; color: #fff;">
-              <input style="display:block;width:auto;" type="text" id="displayorcidedit" name="displayorcidedit" placeholder="ORCID" />
-              <br/>
-              <input style="display:block;width:auto;" type="text" id="displaynameedit" name="displaynameedit" placeholder="Name" />
-              <br/>
-              <input style="display:block;width:auto;" type="text" id="displayaffiliationedit" name="displayaffiliationedit" placeholder="Affiliation" />
-              <br/>
-              <button class="login-box-button" id="login-widget-change-profile-save" name="change-profile-save" style="margin-left:33px;margin-bottom:10px;">Save</button>&nbsp;&nbsp;&nbsp;
-              <button class="login-box-button" id="login-widget-reset-pass2" name="reset-pass2" style="margin-bottom:10px;">Reset password</button><br/>
-              <button class="login-box-button" id="login-widget-delete-account" name="delete-account" style="margin-left:33px;margin-bottom:10px;background-color:#dc3545;">Delete account</button>
+            <div id="loggedin-area-edit" class="login-panel-section" style="display: none;">
+              <div class="login-panel-header">
+                <div class="login-panel-title">Edit profile</div>
+                <div class="login-panel-subtitle">Update the details shown with your submissions.</div>
+              </div>
+              <div class="login-form-grid">
+                <label for="displayorcidedit">ORCID</label>
+                <input type="text" id="displayorcidedit" name="displayorcidedit" placeholder="ORCID" />
+                <label for="displaynameedit">Name</label>
+                <input type="text" id="displaynameedit" name="displaynameedit" placeholder="Name" />
+                <label for="displayaffiliationedit">Affiliation</label>
+                <input type="text" id="displayaffiliationedit" name="displayaffiliationedit" placeholder="Affiliation" />
+              </div>
+              <div class="login-actions-row login-actions-row-split">
+                <button class="login-box-button login-box-button-primary" id="login-widget-change-profile-save" name="change-profile-save">
+                  <span class="btn-label">Save</span>
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                </button>
+                <button class="login-box-button login-box-button-secondary" id="login-widget-reset-pass2" name="reset-pass2">Reset password</button>
+              </div>
+              <div class="login-actions-row login-actions-row-split">
+                <button class="login-box-button login-box-button-danger" id="login-widget-delete-account" name="delete-account">Delete account</button>
+              </div>
             </div>
           </div>
         </div><i class="bx bx-printer" style="line-height: 20px;" onclick="window.print();"></i>
