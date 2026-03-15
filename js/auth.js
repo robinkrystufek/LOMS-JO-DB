@@ -20,6 +20,7 @@ function updateLoginIdentity(name, email) {
 async function updateAccessPermissions() {
   const buttons = document.querySelectorAll('.jo-request-revision');
   const addTab = document.getElementById('tab-add-btn');
+  const fileUploadOption = document.querySelector('input[name="input_format"][value="upload"]');
   if (!buttons.length || !addTab) return;
   if(userRole === null && userLoggedIn) {
     try {
@@ -50,10 +51,10 @@ async function updateAccessPermissions() {
     ? userRole[0].toUpperCase() + userRole.slice(1)
     : 'User';
   buttons.forEach(btn => {
-    if (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
+    if (!userLoggedIn) {
       btn.disabled = true;
       btn.classList.add('locked', 'tooltip-icon');
-      btn.dataset.tooltip = "You need to be registered as depositor to use this feature";
+      btn.dataset.tooltip = "You need to be registered to use this feature";
     } 
     else {
       btn.disabled = false;
@@ -61,9 +62,9 @@ async function updateAccessPermissions() {
       btn.removeAttribute('data-tooltip');
     }
   });
-  if (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
+  if (!userLoggedIn) {
     addTab.classList.add('locked');
-    addTab.dataset.tooltip = "You need to be registered as depositor to use this feature";
+    addTab.dataset.tooltip = "You need to be registered to use this feature";
     if (!addTab.querySelector('i')) {
       const icon = document.createElement('i');
       icon.className = 'bx bx-lock-alt';
@@ -76,6 +77,16 @@ async function updateAccessPermissions() {
     const icon = addTab.querySelector('i');
     if (icon) icon.remove();
   }  
+  if(!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
+    fileUploadOption.disabled = true;
+    fileUploadOption.classList.add('locked', 'tooltip-icon');
+    fileUploadOption.dataset.tooltip = "You need to be assigned the depositor role to use this feature";
+  }
+  else {
+    fileUploadOption.disabled = false;
+    fileUploadOption.classList.remove('locked', 'tooltip-icon');
+    fileUploadOption.removeAttribute('data-tooltip');
+  }
 }
 function toggleSignIn() {
   if (firebase.auth().currentUser) {

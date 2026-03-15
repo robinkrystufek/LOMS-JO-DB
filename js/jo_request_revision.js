@@ -226,10 +226,12 @@
       return;
     }
     const confirmUI = buildOverlayShell(`Request revision for record #${esc(id)}?`);
+    const authNotice = (!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) ? '<div style="color: #555; font-size: 13px; margin-bottom:2em;">You need to be assigned the depositor role to submit revision requests directly. After making your changes and submitting the form, a revision data record file will be generated and must be sent to the <a href="mailto:info@loms.cz?subject=JO%20DB%20submission">administrator</a> for approval.</div>' : '';
     confirmUI.body.innerHTML = `
       <div style="color: #555; font-size: 13px; margin-bottom:2em;">
           You will be taken to the "Add new entry" form with the data from this record pre-filled. You can then make necessary changes and submit it as a revision to this record.
       </div>
+      ${authNotice}
       <div class="jo-db-btn-group">
         <button class="btn btn-primary btn-sm" id="jo-rr-yes">
           <i class="fa fa-check"></i>&nbsp;&nbsp;Yes

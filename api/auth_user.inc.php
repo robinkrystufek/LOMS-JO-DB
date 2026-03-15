@@ -139,12 +139,13 @@ function json_fail($msg, int $http = 400): void {
   echo $json;
   exit;
 }
-function require_depositor_role(string $uid, PDO $pdo): void {
+function require_depositor_role(string $uid, PDO $pdo, $silent = false): bool {
   $role = get_user_role($uid, $pdo);
   if ($role && in_array($role, ['depositor', 'reviewer', 'admin'], true)) {
-    return;
+    return true;
   }
-  json_fail(['error' => 'Insufficient permissions', 'details' => 'User lacks the depositor role or higher'], 403);
+  if (!$silent) json_fail(['error' => 'Insufficient permissions', 'details' => 'User lacks the depositor role or higher'], 403);
+  return false;
 }
 function get_user_role(string $uid, PDO $pdo): ?string {
   try {

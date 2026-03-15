@@ -113,6 +113,12 @@ $reduced_element_note   = as_trimmed(kv_get_first($kv, 'reduced_element_note'));
 $recalculated_loms_note = as_trimmed(kv_get_first($kv, 'recalculated_loms_note'));
 $extra_notes = as_trimmed(kv_get_first($kv, 'extra_notes'));
 if ($extra_notes === null) $extra_notes = as_trimmed(kv_get_first($kv, 'notes'));
+$is_revision_of_id = as_trimmed(kv_get_first($kv, 'is_revision_of_id'));
+$submission_status = 'pending';
+if($is_revision_of_id !== null) {
+  $is_revision_of_id = to_int($is_revision_of_id);
+  if ($is_revision_of_id !== null && $is_revision_of_id > 0) $submission_status = 'pending_revision';
+}
 
 if ($has_density === null) $has_density = 0;
 if ($is_contributor_author === null) $is_contributor_author = 0;
@@ -220,7 +226,6 @@ try {
       density_g_cm3,
       extra_notes,
       is_contributor_author,
-      review_status,
       refractive_index_option,
       combinatorial_jo_option,
       sigma_f_s_option,
@@ -232,7 +237,9 @@ try {
       sigma_f_s_note,
       mag_dipole_note,
       reduced_element_note,
-      recalculated_loms_note
+      recalculated_loms_note,
+      is_revision_of_id,
+      review_status
     ) VALUES (
       :publication_id,
       :contributor_info,
@@ -254,7 +261,6 @@ try {
       :density_g_cm3,
       :extra_notes,
       :is_contributor_author,
-      'pending',
       :refractive_index_option,
       :combinatorial_jo_option,
       :sigma_f_s_option,
@@ -266,7 +272,9 @@ try {
       :sigma_f_s_note,
       :mag_dipole_note,
       :reduced_element_note,
-      :recalculated_loms_note
+      :recalculated_loms_note,
+      :is_revision_of_id,
+      :review_status
     )
   ");
   $stmt->execute([
@@ -302,6 +310,8 @@ try {
     ':mag_dipole_note'           => $mag_dipole_note,
     ':reduced_element_note'      => $reduced_element_note,
     ':recalculated_loms_note'    => $recalculated_loms_note,
+    ':is_revision_of_id'         => $is_revision_of_id,
+    ':review_status'             => $submission_status
   ]);
   $jo_record_id = (int)$pdo->lastInsertId();
   if ($jo_record_id <= 0) json_fail('Failed to create JO record.', 500);

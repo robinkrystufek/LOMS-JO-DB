@@ -766,3 +766,8 @@ function jo_db_connect(string $DB_HOST, string $DB_USER, string $DB_PASS, string
   }
   return $pdo;
 }
+function escape_kv_value(string $v): string {
+  $v = str_replace(["\\", "\""], ["\\\\", "\\\""], $v);
+  $v = str_replace(["\r\n", "\r", "\n"], "\\n", $v);
+  return $v;
+}

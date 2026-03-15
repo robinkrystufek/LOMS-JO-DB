@@ -3,14 +3,24 @@
   if (!form) return;
   const statusEl = document.getElementById('jo-add-status');
   const btn = document.getElementById('form-submit-btn');
-  function setStatus(msg, isOk) {
+  function setStatus(msg, isOk, allowHtml = false) {
     if (!statusEl) {
       alert(msg || '');
       return;
     }
-    statusEl.textContent = msg || '';
+    if (allowHtml) statusEl.innerHTML = msg || '';
+    else statusEl.textContent = msg || '';
     statusEl.style.fontWeight = '600';
     statusEl.style.color = isOk ? 'green' : 'crimson';
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
   }
   form.addEventListener('submit', async function (e) {
     const hasErrors = form.querySelector('.doi-status.is-error') !== null;
@@ -57,7 +67,21 @@
         setStatus('Error: ' + JSON.stringify(msg), false);
         return;
       }
-      setStatus(`Record #${data.jo_record_id} submitted for approval!`, true);
+      let html = '';
+      if (data.jo_record_id) html = `Record #${escapeHtml(data.jo_record_id)} submitted for approval!`;
+      else html = 'Record file generated! Send it to the <a href="mailto:info@loms.cz?subject=JO%20DB%20submission">administrator</a> for approval.';
+      if (data.loms_db_file) {
+        const blob = new Blob([data.loms_db_file], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const filename = `jo_record_${data.jo_record_id || 'draft'}.txt`;
+        html += ` <a href="${url}" download="${escapeHtml(filename)}" style="margin-left:10px;"><i class="fa fa-download"></i> Download submission file</a>`;
+        if (statusEl) {
+          const oldCleanup = statusEl.dataset.downloadUrl;
+          if (oldCleanup) URL.revokeObjectURL(oldCleanup);
+          statusEl.dataset.downloadUrl = url;
+        }
+      }
+      setStatus(html, true, true);
     } catch (err) {
       setStatus('Error: ' + JSON.stringify(err?.message || err), false);
     }

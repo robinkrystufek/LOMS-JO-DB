@@ -28,49 +28,7 @@ $get = function(string $key) use ($payload) {
 };
 
 $userInfo = require_firebase_user();
-$pdo = jo_db_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_CHARSET);
-[
-  $contributor_info,
-  $contributor_email,
-  $contributor_name,
-  $contributor_aff,
-  $contributor_orcid
-] = update_user_info($pdo, $userInfo);
-require_depositor_role($contributor_info, $pdo);
 
-$doi     = as_trimmed($get('pub_doi'));
-$title   = as_trimmed($get('pub_title'));
-$journal = as_trimmed($get('pub_journal'));
-$url     = as_trimmed($get('pub_url'));
-$authors = as_trimmed($get('pub_authors'));
-$year    = to_int($get('pub_year'));
-
-$article_metadata = parse_JSON_POST($_POST['article_metadata']);
-$alex_refs = '{}';
-$alex_citations = '{}';
-if ($doi !== null) {
-  require_once 'lookup_doi.php';
-  try {
-    $doi = normalize_doi($doi);
-    $lookup = doi_lookup_fetch($doi);
-    if (is_array($lookup)) {
-      $article_metadata = json_encode((object)($lookup['raw'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
-      $alex_refs = json_encode((object)($lookup['alex_refs'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
-      $alex_citations = json_encode((object)($lookup['alex_citations'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
-      $alex_id = as_trimmed($lookup['alex_id'] ?? null);
-      if ($title === null || $title === '')       $title   = as_trimmed($lookup['title'] ?? null);
-      if ($authors === null || $authors === '')   $authors = as_trimmed($lookup['authors'] ?? null);
-      if ($journal === null || $journal === '')   $journal = as_trimmed($lookup['journal'] ?? null);
-      if ($url === null || $url === '')           $url     = as_trimmed($lookup['url'] ?? null);
-      if (($year === null || $year === 0) && !empty($lookup['year'])) $year = to_int((string)$lookup['year']);
-    }
-  } catch (Throwable $e) {
-      // Non-fatal: if DOI lookup fails, we can still proceed with whatever metadata we have
-  }
-}
-
-
-$is_contributor_author = bool01($get('is_contributor_author'));
 $re_ion = as_trimmed($get('re_ion'));
 $re_conc_value = to_float($get('re_conc_value'));
 $re_conc_value_upper = to_float($get('re_conc_value_upper'));
@@ -188,10 +146,153 @@ if($is_revision_of_id !== null) {
 }
 if ($extra_notes === null) $extra_notes = as_trimmed($get('notes'));
 
-if ($title === null) json_fail('Publication title is required (pub_title).');
+$is_contributor_author = bool01($get('is_contributor_author'));
+$doi     = as_trimmed($get('pub_doi'));
+$title   = as_trimmed($get('pub_title'));
+$journal = as_trimmed($get('pub_journal'));
+$url     = as_trimmed($get('pub_url'));
+$authors = as_trimmed($get('pub_authors'));
+$year    = to_int($get('pub_year'));
+
+$article_metadata = parse_JSON_POST($_POST['article_metadata']);
+
+$compRows = [];
+$compJson = $get('comp_json');
+if ($compJson !== null && is_string($compJson)) {
+  $decoded = json_decode($compJson, true);
+  if (is_array($decoded)) {
+    foreach ($decoded as $row) {
+      $c = as_trimmed($row['component'] ?? null);
+      $u = as_trimmed($row['unit'] ?? null);
+      $v = to_float($row['value'] ?? null);
+      if ($c === null || $u === null || $v === null) continue;
+      if (!in_array($u, ['mol%','wt%','at%'], true)) continue;
+      $compRows[] = ['component'=>$c, 'value'=>$v, 'unit'=>$u];
+    }
+  }
+} 
+else {
+  $components = $get('comp_component');
+  $values     = $get('comp_value');
+  $units      = $get('comp_unit');
+  if (is_array($components) && is_array($values) && is_array($units)) {
+    $n = min(count($components), count($values), count($units));
+    for ($i=0; $i<$n; $i++) {
+      $c = as_trimmed((string)$components[$i]);
+      $u = as_trimmed((string)$units[$i]);
+      $v = to_float($values[$i]);
+      if ($c === null || $u === null || $v === null) continue;
+      if (!in_array($u, ['mol%','wt%','at%'], true)) continue;
+      $compRows[] = ['component'=>$c, 'value'=>$v, 'unit'=>$u];
+    }
+  }
+}
+
 if ($re_ion === null) json_fail('RE ion is required (re_ion).');
 if ($composition_text === null) json_fail('Composition text is required (composition_text).');
 if ($host_type === null) json_fail('Host type is required (host_type).');
+
+$pdo = jo_db_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_CHARSET);
+[
+  $contributor_info,
+  $contributor_email,
+  $contributor_name,
+  $contributor_aff,
+  $contributor_orcid
+] = update_user_info($pdo, $userInfo);
+
+$loms_lines = [];
+$loms_lines[] = '# LOMS JO DB export';
+$loms_lines[] = '# Generated: ' . gmdate('Y-m-d\TH:i:s\Z');
+$loms_lines[] = '';
+
+if ($doi !== null)     $loms_lines[] = 'pub_doi="' . escape_kv_value($doi) . '"';
+if ($title !== null)   $loms_lines[] = 'pub_title="' . escape_kv_value($title) . '"';
+if ($journal !== null) $loms_lines[] = 'pub_journal="' . escape_kv_value($journal) . '"';
+if ($year !== null)    $loms_lines[] = 'pub_year="' . escape_kv_value((string)$year) . '"';
+if ($url !== null)     $loms_lines[] = 'pub_url="' . escape_kv_value($url) . '"';
+if ($authors !== null) $loms_lines[] = 'pub_authors="' . escape_kv_value($authors) . '"';
+
+if ($re_ion !== null)              $loms_lines[] = 're_ion="' . escape_kv_value($re_ion) . '"';
+if ($re_conc_value !== null)       $loms_lines[] = 're_conc_value="' . escape_kv_value((string)$re_conc_value) . '"';
+if ($re_conc_value_upper !== null) $loms_lines[] = 're_conc_value_upper="' . escape_kv_value((string)$re_conc_value_upper) . '"';
+if ($re_conc_value_note !== null)  $loms_lines[] = 're_conc_value_note="' . escape_kv_value($re_conc_value_note) . '"';
+if ($re_conc_unit !== null)        $loms_lines[] = 're_conc_unit="' . escape_kv_value($re_conc_unit) . '"';
+if ($sample_label !== null)        $loms_lines[] = 'sample_label="' . escape_kv_value($sample_label) . '"';
+if ($host_type !== null)           $loms_lines[] = 'host_type="' . escape_kv_value(as_trimmed($get('host_type'))) . '"';
+if ($composition_text !== null)    $loms_lines[] = 'composition_text="' . escape_kv_value($composition_text) . '"';
+if ($omega2 !== null)              $loms_lines[] = 'omega2="' . escape_kv_value((string)$omega2) . '"';
+if ($omega4 !== null)              $loms_lines[] = 'omega4="' . escape_kv_value((string)$omega4) . '"';
+if ($omega6 !== null)              $loms_lines[] = 'omega6="' . escape_kv_value((string)$omega6) . '"';
+if ($omega2_error !== null)        $loms_lines[] = 'omega2_error="' . escape_kv_value((string)$omega2_error) . '"';
+if ($omega4_error !== null)        $loms_lines[] = 'omega4_error="' . escape_kv_value((string)$omega4_error) . '"';
+if ($omega6_error !== null)        $loms_lines[] = 'omega6_error="' . escape_kv_value((string)$omega6_error) . '"';
+
+if ($has_density !== null)               $loms_lines[] = 'has_density="' . escape_kv_value((string)$has_density) . '"';
+if ($density_g_cm3 !== null)             $loms_lines[] = 'density_g_cm3="' . escape_kv_value((string)$density_g_cm3) . '"';
+if ($is_contributor_author !== null)     $loms_lines[] = 'is_contributor_author="' . escape_kv_value((string)$is_contributor_author) . '"';
+if ($refractive_index_option !== null)   $loms_lines[] = 'refractive_index_option="' . escape_kv_value((string)$refractive_index_option) . '"';
+if ($combinatorial_jo_option !== null)   $loms_lines[] = 'combinatorial_jo_option="' . escape_kv_value((string)$combinatorial_jo_option) . '"';
+if ($sigma_f_s_option !== null)          $loms_lines[] = 'sigma_f_s_option="' . escape_kv_value((string)$sigma_f_s_option) . '"';
+if ($mag_dipole_option !== null)         $loms_lines[] = 'mag_dipole_option="' . escape_kv_value((string)$mag_dipole_option) . '"';
+if ($reduced_element_option !== null)    $loms_lines[] = 'reduced_element_option="' . escape_kv_value((string)$reduced_element_option) . '"';
+if ($recalculated_loms_option !== null)  $loms_lines[] = 'recalculated_loms_option="' . escape_kv_value((string)$recalculated_loms_option) . '"';
+if ($refractive_index_note !== null)     $loms_lines[] = 'refractive_index_note="' . escape_kv_value($refractive_index_note) . '"';
+if ($combinatorial_jo_note !== null)     $loms_lines[] = 'combinatorial_jo_note="' . escape_kv_value($combinatorial_jo_note) . '"';
+if ($sigma_f_s_note !== null)            $loms_lines[] = 'sigma_f_s_note="' . escape_kv_value($sigma_f_s_note) . '"';
+if ($mag_dipole_note !== null)           $loms_lines[] = 'mag_dipole_note="' . escape_kv_value($mag_dipole_note) . '"';
+if ($reduced_element_note !== null)      $loms_lines[] = 'reduced_element_note="' . escape_kv_value($reduced_element_note) . '"';
+if ($recalculated_loms_note !== null)    $loms_lines[] = 'recalculated_loms_note="' . escape_kv_value($recalculated_loms_note) . '"';
+if ($extra_notes !== null)               $loms_lines[] = 'extra_notes="' . escape_kv_value($extra_notes) . '"';
+if ($is_revision_of_id !== null)         $loms_lines[] = 'is_revision_of_id="' . escape_kv_value((string)$is_revision_of_id) . '"';
+
+if (!empty($compRows)) {
+  $loms_lines[] = '';
+  $loms_lines[] = '# Normalized composition';
+  foreach ($compRows as $r) {
+    if (!empty($r['component'])) $loms_lines[] = 'comp_component="' . escape_kv_value((string)$r['component']) . '"';
+    if (isset($r['value']))      $loms_lines[] = 'comp_value="' . escape_kv_value((string)$r['value']) . '"';
+    if (!empty($r['unit']))      $loms_lines[] = 'comp_unit="' . escape_kv_value((string)$r['unit']) . '"';
+  }
+}
+
+$loms_db_file_gen = implode("\n", $loms_lines) . "\n";
+
+if(!require_depositor_role($contributor_info, $pdo, true)) {
+  echo json_encode([
+    'ok' => true,
+    'publication_id' => null,
+    'jo_record_id' => null,
+    'loms_db_file' => $loms_db_file_gen
+  ], JSON_UNESCAPED_UNICODE);  
+  exit;
+}
+
+$alex_refs = '{}';
+$alex_citations = '{}';
+if ($doi !== null) {
+  require_once 'lookup_doi.php';
+  try {
+    $doi = normalize_doi($doi);
+    $lookup = doi_lookup_fetch($doi);
+    if (is_array($lookup)) {
+      $article_metadata = json_encode((object)($lookup['raw'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      $alex_refs = json_encode((object)($lookup['alex_refs'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      $alex_citations = json_encode((object)($lookup['alex_citations'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+      $alex_id = as_trimmed($lookup['alex_id'] ?? null);
+      if ($title === null || $title === '')       $title   = as_trimmed($lookup['title'] ?? null);
+      if ($authors === null || $authors === '')   $authors = as_trimmed($lookup['authors'] ?? null);
+      if ($journal === null || $journal === '')   $journal = as_trimmed($lookup['journal'] ?? null);
+      if ($url === null || $url === '')           $url     = as_trimmed($lookup['url'] ?? null);
+      if (($year === null || $year === 0) && !empty($lookup['year'])) $year = to_int((string)$lookup['year']);
+    }
+  } catch (Throwable $e) {
+      // Non-fatal: if DOI lookup fails, we can still proceed with whatever metadata we have
+  }
+}
+
+if ($title === null) json_fail('Publication title is required (pub_title).');
+
 
 
 try {
@@ -358,44 +459,14 @@ try {
     ':reduced_element_note'      => $reduced_element_note,
     ':recalculated_loms_note'    => $recalculated_loms_note,
     ':is_revision_of_id'         => $is_revision_of_id,
-    ':review_status'             => $submission_status,
+    ':review_status'             => $submission_status
   ]);
   $jo_record_id = (int)$pdo->lastInsertId();
   if ($jo_record_id <= 0) json_fail('Failed to create JO record.', 500);
 
-  $compRows = [];
-  $compJson = $get('comp_json');
-  if ($compJson !== null && is_string($compJson)) {
-    $decoded = json_decode($compJson, true);
-    if (is_array($decoded)) {
-      foreach ($decoded as $row) {
-        $c = as_trimmed($row['component'] ?? null);
-        $u = as_trimmed($row['unit'] ?? null);
-        $v = to_float($row['value'] ?? null);
-        if ($c === null || $u === null || $v === null) continue;
-        if (!in_array($u, ['mol%','wt%','at%'], true)) continue;
-        $compRows[] = ['component'=>$c, 'value'=>$v, 'unit'=>$u];
-      }
-    }
-  } 
-  else {
-    $components = $get('comp_component');
-    $values     = $get('comp_value');
-    $units      = $get('comp_unit');
-    if (is_array($components) && is_array($values) && is_array($units)) {
-      $n = min(count($components), count($values), count($units));
-      for ($i=0; $i<$n; $i++) {
-        $c = as_trimmed((string)$components[$i]);
-        $u = as_trimmed((string)$units[$i]);
-        $v = to_float($values[$i]);
-        if ($c === null || $u === null || $v === null) continue;
-        if (!in_array($u, ['mol%','wt%','at%'], true)) continue;
-        $compRows[] = ['component'=>$c, 'value'=>$v, 'unit'=>$u];
-      }
-    }
-  }
   update_composition($compRows, $pdo, $jo_record_id, $re_ion, $re_conc_value, $re_conc_unit);
   $backfill_status = backfill_composition_storage($pdo);
+
   $storedRelPath = null;
   $hasUpload = isset($_FILES['jo_recalc_file']) && is_array($_FILES['jo_recalc_file']) && ($_FILES['jo_recalc_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
   if ($hasUpload) {
@@ -451,6 +522,7 @@ try {
     'publication_id' => $publication_id,
     'jo_record_id' => $jo_record_id,
     'loms_file_path' => $storedRelPath,
+    'loms_db_file' => $loms_db_file_gen
   ], JSON_UNESCAPED_UNICODE);
 } 
 catch (Throwable $e) {
