@@ -43,3 +43,10 @@ document.querySelectorAll('.js-arrow').forEach((arrow) => {
     if (li) li.classList.toggle('show-submenu');
   });
 });
+const helpButton = document.getElementsByClassName("help-button")[0];
+if (helpButton) {
+  helpButton.addEventListener('click', (e) => {
+    var menu = document.querySelector('.help-button-wrapper');
+    menu.classList.toggle('expanded');
+  });
+}

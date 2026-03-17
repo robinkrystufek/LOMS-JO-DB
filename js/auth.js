@@ -17,77 +17,6 @@ function updateLoginIdentity(name, email) {
   if (triggerAvatarEl) triggerAvatarEl.textContent = initials;
   if (cardAvatarEl) cardAvatarEl.textContent = initials;
 }
-async function updateAccessPermissions() {
-  const buttons = document.querySelectorAll('.jo-request-revision');
-  const addTab = document.getElementById('tab-add-btn');
-  const fileUploadOption = document.querySelector('input[name="input_format"][value="upload"]');
-  if (!buttons.length || !addTab) return;
-  if(userRole === null && userLoggedIn) {
-    try {
-      const user = firebase.auth().currentUser;
-      const token = await user?.getIdToken(true);
-      const resp = await fetch('api/auth_permissions.php', {
-        method: 'POST',
-        headers: {
-        "Authorization": `Bearer ${token}`
-        }
-      });
-      const text = await resp.text();
-      let data = JSON.parse(text);
-      if (resp.ok && data && data.ok && data.role && data.uid == user.uid) {
-        userRole = data.role;
-      }
-      else {
-        userRole = null;
-      }
-    } 
-    catch (err) {
-      console.error("Error fetching user permissions:", err);
-      userRole = null;
-    }
-  }
-  document.getElementById('loggedin-area-role').textContent =
-  typeof userRole === 'string' && userRole.length
-    ? userRole[0].toUpperCase() + userRole.slice(1)
-    : 'User';
-  buttons.forEach(btn => {
-    if (!userLoggedIn) {
-      btn.disabled = true;
-      btn.classList.add('locked', 'tooltip-icon');
-      btn.dataset.tooltip = "You need to be registered to use this feature";
-    } 
-    else {
-      btn.disabled = false;
-      btn.classList.remove('locked', 'tooltip-icon');
-      btn.removeAttribute('data-tooltip');
-    }
-  });
-  if (!userLoggedIn) {
-    addTab.classList.add('locked');
-    addTab.dataset.tooltip = "You need to be registered to use this feature";
-    if (!addTab.querySelector('i')) {
-      const icon = document.createElement('i');
-      icon.className = 'bx bx-lock-alt';
-      addTab.appendChild(icon);
-    }
-  } 
-  else {
-    addTab.classList.remove('locked');
-    addTab.removeAttribute('data-tooltip');
-    const icon = addTab.querySelector('i');
-    if (icon) icon.remove();
-  }  
-  if(!userLoggedIn || !['depositor', 'reviewer', 'admin'].includes(userRole)) {
-    fileUploadOption.disabled = true;
-    fileUploadOption.classList.add('locked', 'tooltip-icon');
-    fileUploadOption.dataset.tooltip = "You need to be assigned the depositor role to use this feature";
-  }
-  else {
-    fileUploadOption.disabled = false;
-    fileUploadOption.classList.remove('locked', 'tooltip-icon');
-    fileUploadOption.removeAttribute('data-tooltip');
-  }
-}
 function toggleSignIn() {
   if (firebase.auth().currentUser) {
     firebase.auth().signOut();
@@ -272,7 +201,7 @@ function editProfileSave() {
     document.getElementById('loggedin-area').style.display = 'block';
     document.getElementById('login-signup-area').style.display = 'none';
     statusUpdate(saveStatus, 'Profile updated', false);
-    initUserInfo();
+    window.cInitUserInfo?.();
   }).catch((error) => {
     console.log(`Error updating user info: ${uname} ${uaffiliation}`, error);
     statusUpdate(saveStatus, 'Failed to update profile', true);
@@ -376,10 +305,10 @@ function initApp() {
       updateLoginIdentity(displayName, email);
       document.getElementById('login-widget-sign-up').disabled = true;
       document.getElementById('login-widget-sign-in').textContent = 'Sign out';
-      initUserInfo();
+      window.cInitUserInfo?.();
     } 
     else {
-      initUserInfo(false);
+      window.cInitUserInfo?.();
       userLoggedIn = false;
       updateLoginIdentity('', '');
       document.getElementById('login-widget-sign-up').disabled = false;
@@ -405,42 +334,6 @@ function initApp() {
   document.getElementById('displayorcid').addEventListener('change', orcidNewChange, false);
   document.getElementById('login-widget-delete-account').addEventListener('click', deleteAccount, false);
   document.getElementById('policyagreement').addEventListener('change', policyAgreementChange, false);
-}
-function initUserInfo() {
-  const user = firebase.auth().currentUser;
-  updateAccessPermissions();
-  const setVal = (id, v) => {
-    const el = document.getElementById(id);
-    if (el) el.value = v;
-    return el;
-  };
-  if (!user) {
-    setVal('contributor-info-ui', '');
-    setVal('contributor-info', '');
-    setVal('contributor-info-ui2', '');
-    setVal('contributor-info2', '');
-    return;
-  }
-  const name  = (user.displayName || '').trim();
-  const email = (user.email || '').trim();
-  let affiliation = '';
-  let orcid = '';
-  if (typeof user.photoURL === 'string' && user.photoURL.includes(';')) {
-    const parts = user.photoURL.split(';');
-    affiliation = (parts[0] || '').trim();
-    orcid       = (parts[1] || '').trim();
-  }
-  const contributorCombined = name ? `${name} <${email}>` : `<${email}>`;
-  for (const s of ['', '2']) {
-    setVal(`contributor-info-ui${s}`, contributorCombined);
-    setVal(`contributor-info${s}`, user.uid);
-    setVal(`contributor-info-name${s}`, name);
-    setVal(`contributor-info-email${s}`, email);
-    setVal(`contributor-info-affiliation${s}`, affiliation);
-    setVal(`contributor-info-orcid${s}`, orcid);
-  }
-  const uiInput = document.getElementById('contributor-info-ui');
-  if (uiInput) uiInput.disabled = true;
 }
 window.onload = function() {
   initApp();

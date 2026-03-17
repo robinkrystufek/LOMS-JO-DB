@@ -311,6 +311,7 @@ nav .navbar .links li:hover .js-sub-menu {
   justify-content: space-between;
   gap: 12px;
   padding-top: 2px;
+  margin-top: 10px;
   border-top: 1px solid #e8eef6;
   font-size: 13px;
   color: #64748b;
@@ -446,6 +447,9 @@ nav .navbar .links li:hover .js-sub-menu {
   color: #0b66d0;
   font-size: 11px;
 }
+.login-account-orcid:empty {
+  display: none;
+}
 .login-account-role {
   display: inline-flex;
   align-self: flex-start;
@@ -454,6 +458,9 @@ nav .navbar .links li:hover .js-sub-menu {
   background: rgb(234, 247, 239);
   color: rgb(47, 122, 74);
   font-size: 11px;
+}
+.login-account-role:empty {
+  display: none;
 }
 .navbar .nav-links .sidebar-logo {
   display: none;
