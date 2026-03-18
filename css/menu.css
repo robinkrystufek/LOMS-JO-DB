@@ -37,6 +37,7 @@ nav .navbar {
   color: #fff;
   text-decoration: none;
   font-weight: 600;
+  line-height: 1 !important;
 }
 nav .navbar .nav-links {
   line-height: 70px;

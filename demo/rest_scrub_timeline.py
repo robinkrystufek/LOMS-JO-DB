@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-jo_timeline.py
+rest_scrub_timeline.py
 
 Build an interactive publication timeline from the JO DB REST endpoints:
 
-- rest/records/    (collects JO records + publication DOIs + years)
-- rest/publications    (collects per-publication reference/cited-by metadata)
+- rest/records/      (collects JO records + publication DOIs + years)
+- rest/publications  (collects per-publication reference/cited-by metadata)
 
 Output:
-- timeline.html (interactive Plotly timeline with citation/reference edges)
+- jo_pub_timeline.html        (interactive Plotly timeline with citation/reference edges)
 - nodes.csv, edges.csv (for debugging / downstream use)
 
 Usage:
-  python jo_timeline.py --base-url https://loms.cz/jo-db/api --out timeline.html
+  python rest_scrub_timeline.py --base-url https://loms.cz/jo-db/api --out timeline.html
 
 Graphing details:
 - Lines are drawn only when both DOIs are already present in the JO dataset
@@ -292,7 +292,7 @@ def make_plot(nodes: Dict[str, PubNode], edges: List[Edge], out_html: str,
         mode="lines",
         hoverinfo="skip",
         line=dict(
-            color="rgba(0,0,0,0.18)",  # blob color
+            color="rgba(0,0,0,0.18)",
             width=1
         ),
         showlegend=False,
@@ -325,7 +325,7 @@ def make_plot(nodes: Dict[str, PubNode], edges: List[Edge], out_html: str,
         text=hover,
         marker=dict(
             size=node_size,
-            color="#007bff",            # your requested blue
+            color="#007bff",
             line=dict(color="white", width=0.5),
             opacity=1,
         ),
@@ -367,7 +367,7 @@ def make_plot(nodes: Dict[str, PubNode], edges: List[Edge], out_html: str,
         hovermode="closest",
     )
 
-    fig.write_html(out_html, include_plotlyjs="cdn")
+    fig.write_html(out_html, include_plotlyjs="cdn",post_script=f"document.title = {title!r};")
     print(f"Wrote {out_html}")
 
 
@@ -433,7 +433,7 @@ def crawl_publications_from_records(client: JOClient, per_page: int = 50) -> Dic
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True, help="Base URL where the PHP endpoints live (with or without /api/)")
-    ap.add_argument("--out", default="timeline.html", help="Output HTML file")
+    ap.add_argument("--out", default="jo_pub_timeline.html", help="Output HTML file")
     ap.add_argument("--per-page", type=int, default=50, help="browse_records per_page (max 50)")
     ap.add_argument("--max-pubs", type=int, default=0, help="If >0, limit to top-N publications by JO record count")
     ap.add_argument("--timeout", type=float, default=30.0)
@@ -485,7 +485,7 @@ def main() -> int:
         nodes=nodes,
         edges=edges,
         out_html=args.out,
-        title="JO publications timeline (blob size = JO record count; lines = internal refs/cited_by)",
+        title="JO DB publications timeline",
     )
     return 0
 
