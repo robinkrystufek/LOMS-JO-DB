@@ -49,7 +49,7 @@ LOMS Judd–Ofelt Parameters Database was created by J. Hrabovsky, P. Varak, and
 - Font Awesome — https://github.com/FortAwesome/Font-Awesome
 - Scalar API Reference — https://github.com/scalar/scalar
 
-[![publication timeline][publication-timeline]][publication-timeline]
+[![publication timeline][publication-timeline]][publication-timeline-link]
 
 This project builds upon literature datasets contributed by the rare-earth spectroscopy community. These contributions are gratefully acknowledged, with full citation information provided for each entry. Component entries are cross-checked against the [refractiveindex.info][refractive-index-info] database, maintained by Mikhail Polyanskiy, and provide direct links to the corresponding records. Chemical interpretation of the record components is performed with the help of [PubChem PUG REST API][pubchem].
 
@@ -65,6 +65,7 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 [cc-by-nc-nd-image]: https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png
 [cc-by-nc-nd-shield]: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
 [publication-timeline]: demo/publication_credits.png
+[publication-timeline-link]: https://www.loms.cz/jo-db/demo/jo_pub_timeline.html
 [refractive-index-info]: https://github.com/polyanskiy/refractiveindex.info-database
 [pubchem]: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
 [jo]: https://www.loms.cz/jo/
