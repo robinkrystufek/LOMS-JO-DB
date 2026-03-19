@@ -158,6 +158,10 @@ function columnPrecision(rows, getNum, maxDecimals = 3) {
   p = Math.max(0, Math.min(p, maxDecimals));
   return p;
 }
+function getSanitizedRI(rIndexDesc) {
+  const m = String(rIndexDesc ?? '').trim().match(/^\d+\.\d+/);
+  return m ? parseFloat(m[0]) : null;
+}
 function render(items) {
   tbody.innerHTML = '';
   items.forEach((it, idx) => {
@@ -310,8 +314,20 @@ function render(items) {
     };
     const startsWithNumber = /^[0-9]+(\.[0-9]+)?\b/.test(it.badges_notes[0]);
     let rIndexDesc = "";
+    let transitionAnalysisSection = "";
     if (startsWithNumber && it.badges_states[0] == 2) {
       rIndexDesc = esc(it.badges_notes[0]);
+      const analysisUrl =
+        `../jo/?n=${encodeURIComponent(getSanitizedRI(rIndexDesc))}` +
+        `&jo2=${encodeURIComponent(esc(it.omega2))}` +
+        `&jo4=${encodeURIComponent(esc(it.omega4))}` +
+        `&jo6=${encodeURIComponent(esc(it.omega6))}` +
+        `&RE=${encodeURIComponent(esc(it.re_ion))}` +
+        `&sample_id=${encodeURIComponent(`Record ${it.jo_record_id} (${it.doi || ''})`)}`;
+      transitionAnalysisSection = 
+        `<button class="btn btn-primary btn-sm" type="button" onclick="window.open('${analysisUrl}', '_blank', 'noopener,noreferrer')">
+          <i class="fa fa-line-chart"></i>&nbsp;&nbsp;Transition analysis
+        </button>`;
     } 
     else {
       rIndexDesc += stateMapRI[it.badges_states[0]] ?? "";
@@ -406,33 +422,34 @@ function render(items) {
             <dd><a href="${(it.pub_url || '')}" target="_blank">${(it.doi || '')}</a></dd>
           </dl>
           <div class="jo-db-btn-group">
-          <button class="btn btn-primary btn-sm jo-parentpub-zoom" type="button" data-doi="${esc(it.doi || '')}" data-pub-id="${esc(it.publication_id || '')}"><i class="fa fa-search"></i>&nbsp;&nbsp;Publication details</button>
+            <button class="btn btn-primary btn-sm jo-parentpub-zoom" type="button" data-doi="${esc(it.doi || '')}" data-pub-id="${esc(it.publication_id || '')}"><i class="fa fa-search"></i>&nbsp;&nbsp;Publication details</button>
             <button class="btn btn-primary btn-sm jo-find-parent-doi" data-doi="${esc(it.doi || '')}" type="button"><i class="fa fa-arrow-right"></i>&nbsp;&nbsp;Show entries from this publication</button>
-              <div class="btn-split">
-                <button class="btn btn-secondary btn-sm" type="button" onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">
-                  <i class="fa fa-download"></i>&nbsp;&nbsp;Export citation
-                </button>
-                <button class="btn btn-secondary btn-sm btn-split-toggle" type="button" aria-label="Select format">
-                  <i class="fa fa-caret-down"></i>
-                </button>
-                <div class="btn-split-menu">
-                  <button onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">BibTeX</button>
-                  <button onclick="exportCitation(${esc(it.jo_record_id)}, 'ris')">RIS</button>
-                  <button onclick="exportCitation(${esc(it.jo_record_id)}, 'apa')">APA</button>
-                </div>
+            ${transitionAnalysisSection}
+            <div class="btn-split">
+              <button class="btn btn-secondary btn-sm" type="button" onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">
+                <i class="fa fa-download"></i>&nbsp;&nbsp;Export citation
+              </button>
+              <button class="btn btn-secondary btn-sm btn-split-toggle" type="button" aria-label="Select format">
+                <i class="fa fa-caret-down"></i>
+              </button>
+              <div class="btn-split-menu">
+                <button onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">BibTeX</button>
+                <button onclick="exportCitation(${esc(it.jo_record_id)}, 'ris')">RIS</button>
+                <button onclick="exportCitation(${esc(it.jo_record_id)}, 'apa')">APA</button>
               </div>
-              <div class="btn-split">
-                <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">
-                  <i class="fa fa-download"></i>&nbsp;&nbsp;Export data
-                </button>
-                <button class="btn btn-secondary btn-sm btn-split-toggle" type="button" aria-label="Select format">
-                  <i class="fa fa-caret-down"></i>
-                </button>
-                <div class="btn-split-menu">
-                  <button onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">CSV</button>
-                  <button onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">Submission file</button>
-                </div>
+            </div>
+            <div class="btn-split">
+              <button class="btn btn-secondary btn-sm" type="button" onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">
+                <i class="fa fa-download"></i>&nbsp;&nbsp;Export data
+              </button>
+              <button class="btn btn-secondary btn-sm btn-split-toggle" type="button" aria-label="Select format">
+                <i class="fa fa-caret-down"></i>
+              </button>
+              <div class="btn-split-menu">
+                <button onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">CSV</button>
+                <button onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">Submission file</button>
               </div>
+            </div>
             <button class="btn btn-secondary btn-sm jo-audit-trail" type="button" data-id="${esc(it.jo_record_id)}">
               <i class="fa fa-history"></i>&nbsp;&nbsp;Audit trail
             </button>
