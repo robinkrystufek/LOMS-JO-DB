@@ -25,7 +25,7 @@ CookieConsent.run({
             en: {
                 consentModal: {
                     title: "Welcome to the LOMS Judd–Ofelt analysis suite!",
-                    description: "<p style='text-align: justify; display: inline-block; font-size: small;'>We use cookies to enhance your browsing experience and analyze website traffic. By clicking 'Accept all', you consent to the use of all cookies. You can manage your preferences by clicking 'Manage preferences'.</p><p style='text-align: justify; display: inline-block; font-size: small;'>Works published using this tool shall reference: J.Hrabovsky, P. Varak, R. Krystufek, LOMS: interactive online software for Classical and Combinatorial Judd-Ofelt analysis with integrated database of Judd-Ofelt parameters, preprint, 8. August 2024.</p>",
+                    description: "<p style='text-align: justify; display: inline-block; font-size: x-small;'>We use cookies to enhance your browsing experience and analyze website traffic. By clicking 'Accept all', you consent to the use of all cookies. You can manage your preferences by clicking 'Manage preferences'.</p><p style='text-align: justify; display: inline-block; font-size: x-small;'>Works published using this LOMS online tool shall reference: J.Hrabovsky, P. Varak, R. Krystufek, LOMS.cz computational platform for high-throughput classical and combinatorial Judd-Ofelt analysis and rare-earth spectroscopy, Scientific Reports, 28945 (2025) DOI: <a href='https://doi.org/10.1038/s41598-025-13620-0' target='_blank'>10.1038/s41598-025-13620-0</a></p>",
                     acceptAllBtn: "Accept all",
                     acceptNecessaryBtn: "Reject all",
                     showPreferencesBtn: "Manage preferences",
