@@ -13,7 +13,10 @@ info:
 
     - [Render database elemental breakdown with matplotlib](https://www.loms.cz/jo-db/demo/rest_scrub_elements.py) ([output](https://www.loms.cz/jo-db/demo/jo_elements_treemap.html))
 
+    - [Scrub LOMS submission data files](https://www.loms.cz/jo-db/demo/rest_scrub_loms_records.py) ([output](https://www.loms.cz/jo-db/demo/loms_records.zip))
+
     - [Search DOI records in a Google Sheet with Apps Script](https://www.loms.cz/jo-db/demo/rest_gs_test_db_doi.gs)
+
 servers:
   - url: https://www.loms.cz/jo-db/api/rest
 

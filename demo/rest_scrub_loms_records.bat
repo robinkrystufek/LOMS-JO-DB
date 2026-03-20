@@ -1,0 +1,1 @@
+python rest_scrub_loms_records.py --base-url https://www.loms.cz/jo-db/api/rest --out loms_records.zip --start-page 1 --end-page 2 --per-page 10
