@@ -384,9 +384,9 @@ function render(items) {
       rIndexDesc = esc(it.badges_notes[0]);
       const analysisUrl =
         `../jo/?n=${encodeURIComponent(getSanitizedRI(rIndexDesc))}` +
-        `&jo2=${encodeURIComponent(esc(it.omega2))}` +
-        `&jo4=${encodeURIComponent(esc(it.omega4))}` +
-        `&jo6=${encodeURIComponent(esc(it.omega6))}` +
+        `&jo2=${it.omega2 ? encodeURIComponent(esc(it.omega2*1e-20)) : ''}` +
+        `&jo4=${it.omega4 ? encodeURIComponent(esc(it.omega4*1e-20)) : ''}` +
+        `&jo6=${it.omega6 ? encodeURIComponent(esc(it.omega6*1e-20)) : ''}` +
         `&RE=${encodeURIComponent(esc(it.re_ion))}` +
         `&sample_id=${encodeURIComponent(`Record ${it.jo_record_id} (${it.doi || ''})`)}` + 
         `&_ts=${Date.now()}`;
