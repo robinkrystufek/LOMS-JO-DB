@@ -512,7 +512,8 @@ try {
   } 
   else {
     if ($recalculated_loms_option === 2) {
-      json_fail('Recalculated by LOMS requires uploading the LOMS file (jo_recalc_file).');
+      if ($is_revision_of_id !== null) json_fail('Revised records must reupload the LOMS file to ensure the JO record is fully updated with the recalculated data. Please upload the LOMS file for this revision.');
+      else json_fail('Recalculated by LOMS requires uploading the LOMS file.');
     }
   }
   $pdo->commit();

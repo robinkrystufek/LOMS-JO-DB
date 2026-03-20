@@ -53,6 +53,69 @@ function hydrateRiIcons(containerEl) {
     slot.dataset.riDone = '1';
   });
 }
+window.__JO_LOMS_LOOKUP_CACHE__ = window.__JO_LOMS_LOOKUP_CACHE__ || new Map();
+window.__JO_LOMS_LOOKUP_INFLIGHT__ = window.__JO_LOMS_LOOKUP_INFLIGHT__ || new Map();
+function setLomsLookupLoading(btn) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;Data analysis`;
+}
+function setLomsLookupReady(btn, url) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.innerHTML = `<i class="fa fa-line-chart"></i>&nbsp;&nbsp;Data analysis`;
+  btn.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
+}
+function setLomsLookupEmpty(btn) {
+  if (!btn) return;
+  btn.remove();
+}
+async function lookupLomsInput(recordId) {
+  const key = String(recordId || '').trim();
+  if (!key) return null;
+  if (window.__JO_LOMS_LOOKUP_CACHE__.has(key)) {
+    return window.__JO_LOMS_LOOKUP_CACHE__.get(key);
+  }
+  if (window.__JO_LOMS_LOOKUP_INFLIGHT__.has(key)) {
+    return window.__JO_LOMS_LOOKUP_INFLIGHT__.get(key);
+  }
+  const p = (async () => {
+    try {
+      console.log(`api/lookup_loms.php?record_id=${encodeURIComponent(key)}`);
+      const res = await fetch(`api/lookup_loms.php?record_id=${encodeURIComponent(key)}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json().catch(() => null);
+      console.log('LOMS lookup result:', data);
+      const hitUrl = (data && data.ok && data.content_urlencoded) ? String(data.content_urlencoded) : null;
+      window.__JO_LOMS_LOOKUP_CACHE__.set(key, hitUrl);
+      return hitUrl;
+    } 
+    catch {
+      window.__JO_LOMS_LOOKUP_CACHE__.set(key, null);
+      return null;
+    } 
+    finally {
+      window.__JO_LOMS_LOOKUP_INFLIGHT__.delete(key);
+    }
+  })();
+  window.__JO_LOMS_LOOKUP_INFLIGHT__.set(key, p);
+  return p;
+}
+function hydrateLomsLookupButtons(containerEl) {
+  if (!containerEl) return;
+  const buttons = Array.from(containerEl.querySelectorAll('.jo-loms-lookup[data-record-id]'));
+  if (!buttons.length) return;
+  buttons.forEach(async (btn) => {
+    if (btn.dataset.lomsDone === '1') return;
+    const recordId = btn.getAttribute('data-record-id') || '';
+    setLomsLookupLoading(btn);
+    const hitUrl = await lookupLomsInput(recordId);
+    if (hitUrl) setLomsLookupReady(btn, hitUrl);
+    else setLomsLookupEmpty(btn);
+    btn.dataset.lomsDone = '1';
+  });
+}
 let sortBy = 'id';
 let sortDir = 'desc';
 function updateSortIndicators() {
@@ -302,9 +365,11 @@ function render(items) {
     `;         
 
     let lomsHtml = '';
+    let exportLOMSdataButton = '';
     if (d.loms_file_url) {
       const confirmMsg = "This LOMS source file may be provided by a third party and should be antivirus-checked before use. Click OK to download or Cancel to return.";
       lomsHtml = ` <a href="${esc(d.loms_file_url)}" target="_blank" rel="noopener" download onclick="return confirm('${esc(confirmMsg)}')"><i class="fa fa-download" aria-hidden="true"></i> Download</a>`;
+      exportLOMSdataButton = `<button onclick="if(confirm('${esc(confirmMsg)}')) window.location.href = '${esc(d.loms_file_url)}';">LOMS data files</button>`;
     }
     const stateMapRI = {
       0: "<i class='fa fa-times'></i> ",
@@ -314,7 +379,7 @@ function render(items) {
     };
     const startsWithNumber = /^[0-9]+(\.[0-9]+)?\b/.test(it.badges_notes[0]);
     let rIndexDesc = "";
-    let transitionAnalysisSection = "";
+    let dataAnalysisButton = "";
     if (startsWithNumber && it.badges_states[0] == 2) {
       rIndexDesc = esc(it.badges_notes[0]);
       const analysisUrl =
@@ -323,10 +388,11 @@ function render(items) {
         `&jo4=${encodeURIComponent(esc(it.omega4))}` +
         `&jo6=${encodeURIComponent(esc(it.omega6))}` +
         `&RE=${encodeURIComponent(esc(it.re_ion))}` +
-        `&sample_id=${encodeURIComponent(`Record ${it.jo_record_id} (${it.doi || ''})`)}`;
-      transitionAnalysisSection = 
+        `&sample_id=${encodeURIComponent(`Record ${it.jo_record_id} (${it.doi || ''})`)}` + 
+        `&_ts=${Date.now()}`;
+      dataAnalysisButton = 
         `<button class="btn btn-primary btn-sm" type="button" onclick="window.open('${analysisUrl}', '_blank', 'noopener,noreferrer')">
-          <i class="fa fa-line-chart"></i>&nbsp;&nbsp;Transition analysis
+          <i class="fa fa-line-chart"></i>&nbsp;&nbsp;Data analysis
         </button>`;
     } 
     else {
@@ -334,6 +400,12 @@ function render(items) {
       if (it.badges_notes[0] !== "") {
         rIndexDesc += `<i class='fa fa-question-circle tooltip-icon' data-tooltip='${esc(it.badges_notes[0])}'></i>`;
       }
+    }
+    if (d.loms_file_url) {
+      dataAnalysisButton = 
+        `<button class="btn btn-primary btn-sm jo-loms-lookup" type="button" data-record-id="${esc(it.jo_record_id)}" disabled>
+          <i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;Data analysis
+        </button>`;
     }
     det.innerHTML = `
       <td colspan="10" style="overflow: visible;">
@@ -422,9 +494,9 @@ function render(items) {
             <dd><a href="${(it.pub_url || '')}" target="_blank">${(it.doi || '')}</a></dd>
           </dl>
           <div class="jo-db-btn-group">
+            ${dataAnalysisButton}
             <button class="btn btn-primary btn-sm jo-parentpub-zoom" type="button" data-doi="${esc(it.doi || '')}" data-pub-id="${esc(it.publication_id || '')}"><i class="fa fa-search"></i>&nbsp;&nbsp;Publication details</button>
             <button class="btn btn-primary btn-sm jo-find-parent-doi" data-doi="${esc(it.doi || '')}" type="button"><i class="fa fa-arrow-right"></i>&nbsp;&nbsp;Show entries from this publication</button>
-            ${transitionAnalysisSection}
             <div class="btn-split">
               <button class="btn btn-secondary btn-sm" type="button" onclick="exportCitation(${esc(it.jo_record_id)}, 'bibtex')">
                 <i class="fa fa-download"></i>&nbsp;&nbsp;Export citation
@@ -448,6 +520,7 @@ function render(items) {
               <div class="btn-split-menu">
                 <button onclick="window.location.href = 'api/export_entry.php?type=csv&id=${esc(it.jo_record_id)}';">CSV</button>
                 <button onclick="window.location.href = 'api/export_entry.php?type=loms&&id=${esc(it.jo_record_id)}';">Submission file</button>
+                ${exportLOMSdataButton}
               </div>
             </div>
             <button class="btn btn-secondary btn-sm jo-audit-trail" type="button" data-id="${esc(it.jo_record_id)}">
@@ -629,6 +702,7 @@ async function load(page) {
   if (seq !== loadSeq) return;
   if (!data.ok) throw new Error(data.error || 'Fetch failed');
   render(data.items || []);
+  queueMicrotask(() => hydrateLomsLookupButtons(tbody));
   renderPager(data.page, data.total_pages, data.total);
   bindSortHeaders();
   window.cUpdateAccessPermissions?.();
