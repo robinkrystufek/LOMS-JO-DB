@@ -8,10 +8,10 @@ This repository hosts the interactive online database of experimentally reported
   <a href="https://www.loms.cz/jo-db/">
     <img src="demo/search_ui.png" width="30%" />
   </a>
-  <a href="https://www.loms.cz/jo-db/?row-highlight=3">
+  <a href="https://www.loms.cz/jo-db/?row-highlight=2">
     <img src="demo/record_details.png" width="30%" />
   </a>
-  <a href="https://www.loms.cz/jo-db/?row-highlight=3&pub-details=true">
+  <a href="https://www.loms.cz/jo-db/?row-highlight=2&pub-details=true">
     <img src="demo/publication_details.png" width="30%" />
   </a>
 </p>
