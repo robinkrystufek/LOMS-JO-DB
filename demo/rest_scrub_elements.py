@@ -139,8 +139,6 @@ def load_data():
 
 
 def compute_layout(rows):
-    total = sum(r["count"] for r in rows)
-
     grouped = {}
     for r in rows:
         grouped.setdefault(r["group"], []).append(r)
@@ -155,6 +153,8 @@ def compute_layout(rows):
                 "count": s,
                 "items": sorted(items, key=lambda z: z["count"], reverse=True)
             })
+    
+    total = sum(r["count"] for r in group_rows)        
 
     group_rows.sort(key=lambda x: x["count"], reverse=True)
 
