@@ -81,12 +81,10 @@ async function lookupLomsInput(recordId) {
   }
   const p = (async () => {
     try {
-      console.log(`api/lookup_loms.php?record_id=${encodeURIComponent(key)}`);
       const res = await fetch(`api/lookup_loms.php?record_id=${encodeURIComponent(key)}`, {
         headers: { 'Accept': 'application/json' }
       });
       const data = await res.json().catch(() => null);
-      console.log('LOMS lookup result:', data);
       const hitUrl = (data && data.ok && data.content_urlencoded) ? String(data.content_urlencoded) : null;
       window.__JO_LOMS_LOOKUP_CACHE__.set(key, hitUrl);
       return hitUrl;

@@ -100,7 +100,7 @@ try {
   if ($fullPath === false || !is_file($fullPath)) {
     json_out([
       'ok' => false,
-      'error' => 'ZIP file not found',
+      'error' => 'File not found',
       'loms_path' => $relPath
     ], 500);
   }
@@ -109,6 +109,54 @@ try {
       'ok' => false,
       'error' => 'Resolved path escapes allowed base directory'
     ], 500);
+  }
+
+  $fileExt = strtolower((string)pathinfo($fullPath, PATHINFO_EXTENSION));
+
+  $needles = [
+    'excited_state,u2,u4,u6',
+    'ref_index_type,',
+    'sellmeier_A',
+  ];
+
+  if (in_array($fileExt, ['txt', 'csv'], true)) {
+    $content = @file_get_contents($fullPath);
+    if ($content === false) {
+      json_out([
+        'ok' => false,
+        'error' => 'Could not read TXT/CSV file',
+        'loms_path' => $relPath
+      ], 500);
+    }
+
+    if (search_file($content, $needles)) {
+      json_out([
+        'ok' => true,
+        'record_id' => $recordId,
+        'loms_path' => $relPath,
+        'sample_label' => $r['sample_label'] ?? pathinfo($fullPath, PATHINFO_FILENAME),
+        'matched_file' => basename($fullPath),
+        'content_urlencoded' => "https://www.loms.cz/jo/?RE=" . $r['re_ion'] .
+          "&sample_id=" . rawurlencode($r['sample_label'] ?? "Record " . $recordId) .
+          "&input=" . rawurlencode($content)
+      ]);
+    }
+
+    json_out([
+      'ok' => false,
+      'record_id' => $recordId,
+      'loms_path' => $relPath,
+      'error' => 'TXT/CSV file does not contain required LOMS input markers'
+    ], 200);
+  }
+
+  if ($fileExt !== 'zip') {
+    json_out([
+      'ok' => false,
+      'record_id' => $recordId,
+      'loms_path' => $relPath,
+      'error' => 'Invalid file type: expected ZIP, TXT, or CSV'
+    ], 200);
   }
 
   $zip = new ZipArchive();
@@ -120,12 +168,6 @@ try {
       'zip_error' => $openRes
     ], 500);
   }
-
-  $needles = [
-    'excited_state,u2,u4,u6',
-    'ref_index_type,',
-    'sellmeier_A',
-  ];
 
   for ($i = 0; $i < $zip->numFiles; $i++) {
     $stat = $zip->statIndex($i);
@@ -144,7 +186,9 @@ try {
         'loms_path' => $relPath,
         'sample_label' => $r['sample_label'] ?? pathinfo($name, PATHINFO_FILENAME),
         'matched_file' => $name,
-        'content_urlencoded' => "https://www.loms.cz/jo/?RE=".$r["re_ion"]."&sample_id=".rawurlencode($r['sample_label'] ?? pathinfo($name, PATHINFO_FILENAME))."&input=".rawurlencode($content)
+        'content_urlencoded' => "https://www.loms.cz/jo/?RE=" . $r['re_ion'] .
+          "&sample_id=" . rawurlencode($r['sample_label'] ?? pathinfo($name, PATHINFO_FILENAME)) .
+          "&input=" . rawurlencode($content)
       ]);
     }
   }
