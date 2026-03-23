@@ -21,7 +21,7 @@ The database integrates tightly with the LOMS [Judd–Ofelt analysis suite][jo],
 ## Features
 
 - Structured storage of JO parameters (Ω₂, Ω₄, Ω₆) with units and uncertainty notes
-- Detailed composition handling (component-wise mol%, wt%, at%)
+- Detailed composition handling (component and element-wise mol%, wt%, at%)
 - Rare-earth ion concentration range support
 - DOI-based publication metadata lookup and integration
 - Advanced search and filtering:
@@ -31,13 +31,11 @@ The database integrates tightly with the LOMS [Judd–Ofelt analysis suite][jo],
 - Multiple export formats:
   - CSV data export
   - Citation export (APA / BibTeX / RIS)
-- LOMS JO file import & recalculation file support
+- LOMS JO & recalculation file import support and record re-analysis using the [Judd–Ofelt analysis suite][jo]
 - Firebase-based contributor authentication and review workflow
 - Public [REST API](https://www.loms.cz/jo-db/api/) with OpenAPI specification for programmatic access to JO records, publications, and export endpoints
 
-The system is built using a PHP + MySQL backend with a modular JavaScript front-end interface optimized for interactive filtering and structured data export.
-
-For the live demo, visit the LOMS [database website][LOMSDB].
+The system is built using a PHP + MySQL backend with a modular JavaScript front-end interface optimized for interactive filtering and structured data export. Examples of data scrubbing and re-analysis implemented in Python are [included][demo]. For the live demo, visit the LOMS [database website][LOMSDB].
 
 ## Credits
 
@@ -65,6 +63,7 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 [cc-by-nc-nd-image]: https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png
 [cc-by-nc-nd-shield]: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
 [publication-timeline]: demo/publication_credits.png
+[demo]: demo/
 [publication-timeline-link]: https://www.loms.cz/jo-db/demo/jo_pub_timeline.html
 [refractive-index-info]: https://github.com/polyanskiy/refractiveindex.info-database
 [pubchem]: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
