@@ -1,8 +1,8 @@
 -- LOMS SQL structure
 
--- ----------------------------
+-- -----------------------------------------------
 -- Table structure for `jo_components`
--- ----------------------------
+-- -----------------------------------------------
 CREATE TABLE `jo_components` (
   `id` int NOT NULL,
   `ui_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
@@ -18,9 +18,9 @@ ALTER TABLE `jo_components`
   ADD PRIMARY KEY (`id`),
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
--- ----------------------------
+-- -----------------------------------------------
 -- Table structure for `jo_composition_components`
--- ----------------------------
+-- -----------------------------------------------
 
 CREATE TABLE `jo_composition_components` (
   `id` int NOT NULL,
@@ -40,9 +40,9 @@ ALTER TABLE `jo_composition_components`
   ADD KEY `idx_comp_record` (`jo_record_id`),
   ADD CONSTRAINT `jo_composition_components_ibfk_1` FOREIGN KEY (`jo_record_id`) REFERENCES `jo_records` (`id`) ON DELETE CASCADE;
 
--- ----------------------------
+-- -----------------------------------------------
 -- Table structure for `jo_composition_elements`
--- ----------------------------
+-- -----------------------------------------------
 
 CREATE TABLE `jo_composition_elements` (
   `id` int NOT NULL,
@@ -59,9 +59,44 @@ ALTER TABLE `jo_composition_elements`
   MODIFY `id` int NOT NULL AUTO_INCREMENT,
   ADD KEY `idx_record_id` (`record_id`);
 
--- ----------------------------
+--
+-- Triggers `jo_composition_elements`
+--
+
+DELIMITER $$
+CREATE TRIGGER `jo_comp_el_ad_data_quality` AFTER DELETE ON `jo_composition_elements` FOR EACH ROW BEGIN
+  UPDATE jo_records
+  SET data_quality = calc_jo_record_data_quality(OLD.record_id)
+  WHERE id = OLD.record_id;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `jo_comp_el_ai_data_quality` AFTER INSERT ON `jo_composition_elements` FOR EACH ROW BEGIN
+  UPDATE jo_records
+  SET data_quality = calc_jo_record_data_quality(NEW.record_id)
+  WHERE id = NEW.record_id;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `jo_comp_el_au_data_quality` AFTER UPDATE ON `jo_composition_elements` FOR EACH ROW BEGIN
+  IF OLD.record_id <> NEW.record_id THEN
+    UPDATE jo_records
+    SET data_quality = calc_jo_record_data_quality(OLD.record_id)
+    WHERE id = OLD.record_id;
+  END IF;
+
+  UPDATE jo_records
+  SET data_quality = calc_jo_record_data_quality(NEW.record_id)
+  WHERE id = NEW.record_id;
+END
+$$
+DELIMITER ;
+
+-- -----------------------------------------------
 -- Table structure for `jo_contributors`
--- ----------------------------
+-- -----------------------------------------------
 
 CREATE TABLE `jo_contributors` (
   `uid` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
@@ -74,9 +109,9 @@ CREATE TABLE `jo_contributors` (
 ALTER TABLE `jo_contributors`
   ADD UNIQUE KEY `uid` (`uid`);
 
--- ----------------------------
+-- -----------------------------------------------
 -- Table structure for `jo_records`
--- ----------------------------
+-- -----------------------------------------------
 
 CREATE TABLE `jo_records` (
   `id` int NOT NULL,
@@ -111,6 +146,7 @@ CREATE TABLE `jo_records` (
   `mag_dipole_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `reduced_element_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `recalculated_loms_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `data_quality` int DEFAULT NULL,
   `extra_notes` text,
   `is_contributor_author` tinyint(1) DEFAULT '0',
   `is_revision_of_id` int DEFAULT NULL,
@@ -130,9 +166,64 @@ ALTER TABLE `jo_records`
   ADD CONSTRAINT `fk_revision_of` FOREIGN KEY (`is_revision_of_id`) REFERENCES `jo_records` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `jo_records_ibfk_1` FOREIGN KEY (`publication_id`) REFERENCES `jo_publications` (`id`);
 
--- ----------------------------
+--
+-- Triggers `jo_records`
+--
+
+DELIMITER $$
+CREATE TRIGGER `jo_records_bi_data_quality` BEFORE INSERT ON `jo_records` FOR EACH ROW BEGIN
+  SET NEW.data_quality =
+      0
+      + CASE WHEN NEW.density_g_cm3 IS NOT NULL THEN 10 ELSE 0 END
+      + CASE WHEN NEW.re_conc_value IS NOT NULL THEN 10 ELSE 0 END
+      - CASE WHEN NEW.re_conc_value_upper IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega2 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega4 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega6 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.refractive_index_option = 3 THEN 10 ELSE 0 END
+      + CASE
+          WHEN NEW.refractive_index_option = 2
+           AND NEW.refractive_index_note IS NOT NULL
+           AND TRIM(NEW.refractive_index_note) <> ''
+          THEN 10 ELSE 0
+        END
+      + CASE WHEN NEW.sigma_f_s_option = 2 THEN 10 ELSE 0 END
+      + CASE WHEN NEW.mag_dipole_option IN (0, 2) THEN 10 ELSE 0 END
+      + CASE WHEN NEW.combinatorial_jo_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN NEW.reduced_element_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN NEW.jo_recalc_by_loms = 2 THEN 5 ELSE 0 END;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `jo_records_bu_data_quality` BEFORE UPDATE ON `jo_records` FOR EACH ROW BEGIN
+  SET NEW.data_quality =
+      0
+      + CASE WHEN NEW.density_g_cm3 IS NOT NULL THEN 10 ELSE 0 END
+      + CASE WHEN NEW.re_conc_value IS NOT NULL THEN 10 ELSE 0 END
+      - CASE WHEN NEW.re_conc_value_upper IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega2 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega4 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.omega6 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN NEW.refractive_index_option = 3 THEN 10 ELSE 0 END
+      + CASE
+          WHEN NEW.refractive_index_option = 2
+           AND NEW.refractive_index_note IS NOT NULL
+           AND TRIM(NEW.refractive_index_note) <> ''
+          THEN 10 ELSE 0
+        END
+      + CASE WHEN NEW.sigma_f_s_option = 2 THEN 10 ELSE 0 END
+      + CASE WHEN NEW.mag_dipole_option IN (0, 2) THEN 10 ELSE 0 END
+      + CASE WHEN NEW.combinatorial_jo_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN NEW.reduced_element_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN NEW.jo_recalc_by_loms = 2 THEN 5 ELSE 0 END;
+END
+$$
+DELIMITER ;
+
+-- -----------------------------------------------
 -- Table structure for `jo_publications`
--- ----------------------------
+-- -----------------------------------------------
 
 CREATE TABLE `jo_publications` (
   `id` int NOT NULL,
@@ -156,3 +247,53 @@ ALTER TABLE `jo_publications`
   ADD UNIQUE KEY `alex_id` (`alex_id`);
 
 SET FOREIGN_KEY_CHECKS=1;
+
+-- -----------------------------------------------
+-- Functions
+-- -----------------------------------------------
+
+DELIMITER $$
+CREATE FUNCTION calc_jo_record_data_quality(p_record_id INT)
+  RETURNS INT
+  DETERMINISTIC
+  READS SQL DATA
+BEGIN
+  DECLARE v_score INT DEFAULT 0;
+
+  SELECT
+      0
+      + CASE WHEN jr.density_g_cm3 IS NOT NULL THEN 10 ELSE 0 END
+      + CASE WHEN jr.re_conc_value IS NOT NULL THEN 10 ELSE 0 END
+      - CASE WHEN jr.re_conc_value_upper IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN jr.omega2 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN jr.omega4 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN jr.omega6 IS NOT NULL THEN 5 ELSE 0 END
+      + CASE WHEN jr.refractive_index_option = 3 THEN 10 ELSE 0 END
+      + CASE
+          WHEN jr.refractive_index_option = 2
+           AND jr.refractive_index_note IS NOT NULL
+           AND TRIM(jr.refractive_index_note) <> ''
+          THEN 10 ELSE 0
+        END
+      + CASE WHEN jr.sigma_f_s_option = 2 THEN 10 ELSE 0 END
+      + CASE WHEN jr.mag_dipole_option IN (0, 2) THEN 10 ELSE 0 END
+      + CASE WHEN jr.combinatorial_jo_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN jr.reduced_element_option = 2 THEN 5 ELSE 0 END
+      + CASE WHEN jr.jo_recalc_by_loms = 2 THEN 5 ELSE 0 END
+      + CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM jo_composition_elements jce
+            WHERE jce.record_id = jr.id
+              AND jce.element = jr.re_ion COLLATE utf8mb4_unicode_520_ci
+              AND jce.c_mol IS NOT NULL
+              AND jce.c_wt IS NOT NULL
+          )
+          THEN 20 ELSE 0
+        END
+  INTO v_score
+  FROM jo_records jr
+  WHERE jr.id = p_record_id;
+  RETURN COALESCE(v_score, 0);
+END$$
+DELIMITER ;
