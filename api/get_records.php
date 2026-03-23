@@ -113,6 +113,7 @@ $sortMap = [
   'omega2'         => 'r.omega2',
   'omega4'         => 'r.omega4',
   'omega6'         => 'r.omega6',
+  'data_quality'   => 'r.data_quality',
   'pub_year'       => 'p.year',
 ];
 $orderExpr = $sortMap[$sortByReq] ?? 'r.id';
@@ -182,6 +183,7 @@ try {
       r.density_g_cm3,
       r.extra_notes,
       r.review_status,
+      r.data_quality,
       p.doi AS pub_doi,
       p.title AS pub_title,
       p.journal AS pub_journal,
@@ -341,6 +343,7 @@ try {
       'pub_url' => $r['pub_url'] ?? '',
       'review_status' => $r['review_status'] ?? '',
       'details' => [
+        'data_quality' => $r['data_quality'] ?? 0,
         'contributor' => $r['contributor_info'] ?? '',
         'composition_components' => $componentsByRecord[$rid] ?? [],
         'elemental_composition' => $elementalCompositionByRecord[$rid] ?? [],

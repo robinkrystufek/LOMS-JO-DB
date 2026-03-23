@@ -241,16 +241,29 @@ function render(items) {
     `)
     .join(' ');
     const row = document.createElement('tr');
+    const valuesJO = [
+      { value: it.omega2 },
+      { value: it.omega4 },
+      { value: it.omega6 },
+      { value: it.omega2_error },
+      { value: it.omega4_error },
+      { value: it.omega6_error }
+    ];
+    
+    const pJO = columnPrecision(valuesJO, c => Number(c.value), 3);
     row.innerHTML = `
     <td>${esc(it.jo_record_id)}</td>
       <td>${esc(it.re_ion)}</td>
       <td${esc(it.concentration_note) != "" && !it.concentration ? ' style="overflow: visible"' : ''}>${esc(fmtNum(it.concentration))}${esc(it.concentration_note) != "" && !it.concentration ? '<i class=\'fa fa-question-circle tooltip-icon\' data-tooltip=\''+esc(it.concentration_note)+'\'></i>' : ''}</td>
       <td>${esc(compositionShorthand(it.details.composition_components) || it.details.composition || it.composition)}</td>
       <td>${esc(it.host)}</td>
-      <td>${esc(fmtNum(it.omega2))}${it.omega2_error != null ? ` ± ${esc(fmtNum(it.omega2_error))}` : ''}</td>
-      <td>${esc(fmtNum(it.omega4))}${it.omega4_error != null ? ` ± ${esc(fmtNum(it.omega4_error))}` : ''}</td>
-      <td>${esc(fmtNum(it.omega6))}${it.omega6_error != null ? ` ± ${esc(fmtNum(it.omega6_error))}` : ''}</td>
-      <td>${badgesHtml}</td>
+      <td>${it.omega2 != null ? fmtFixed(Number(it.omega2), pJO) : ''}${it.omega2_error != null ? ` ± ${fmtFixed(Number(it.omega2_error), pJO)}` : ''}</td>
+      <td>${it.omega4 != null ? fmtFixed(Number(it.omega4), pJO) : ''}${it.omega4_error != null ? ` ± ${fmtFixed(Number(it.omega4_error), pJO)}` : ''}</td>
+      <td>${it.omega6 != null ? fmtFixed(Number(it.omega6), pJO) : ''}${it.omega6_error != null ? ` ± ${fmtFixed(Number(it.omega6_error), pJO)}` : ''}</td>
+      <td>
+        <meter min="0" low="25" high="50" optimum="75" value="${esc(it.details.data_quality)}" max="100" class="data-quality-meter"></meter>
+        ${badgesHtml}
+      </td>
       <td style="text-align: right;">
         <button class="btn btn-secondary btn-sm jo-db-view-btn" type="button" data-target="${esc(detailsId)}" aria-label="Entry details" title="Entry details"><i class="fa fa-search-plus"></i></button>
       </td>
