@@ -261,7 +261,6 @@ function render(items) {
       <td>${it.omega4 != null ? fmtFixed(Number(it.omega4), pJO) : ''}${it.omega4_error != null ? ` ± ${fmtFixed(Number(it.omega4_error), pJO)}` : ''}</td>
       <td>${it.omega6 != null ? fmtFixed(Number(it.omega6), pJO) : ''}${it.omega6_error != null ? ` ± ${fmtFixed(Number(it.omega6_error), pJO)}` : ''}</td>
       <td>
-        <meter min="0" low="25" high="50" optimum="75" value="${esc(it.details.data_quality)}" max="100" class="data-quality-meter"></meter>
         ${badgesHtml}
       </td>
       <td style="text-align: right;">

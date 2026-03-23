@@ -12,18 +12,6 @@
   --font-main: Poppins, sans-serif;
   ;
 }
-.data-quality-meter {
-  box-sizing: border-box;
-  position: relative;
-  height: 3.2em;
-  inline-size: 5em;
-  block-size: 3.2em;
-  margin-right: 0.2em;
-  transform-box: fill-box;
-  line-height: 1;
-  vertical-align: middle;
-  margin: -5em 0.2em -5em 0;
-}
 .composition-detail-table .ri-cell {
   width: 28px;
   text-align: center;
